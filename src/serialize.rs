@@ -31,9 +31,7 @@ impl ByteBuf {
                 None
             } else {
                 let read_idx_byte = *self.vec.as_ptr().add(self.read_idx);
-                println!("BEFORE READ IDX IS : {}", self.read_idx);
                 self.read_idx += 1;
-                println!("AFTER READ IDX IS : {}", self.read_idx);
                 Some(read_idx_byte)
             }
         }
