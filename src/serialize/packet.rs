@@ -1,4 +1,4 @@
-use crate::serialize::{ByteBuf};
+use crate::serialize::buffer::ByteBuf;
 
 pub trait PacketSerializer {
     fn serialize(&self, buf: &mut ByteBuf);
@@ -11,7 +11,7 @@ pub mod clientbound {
 
 pub mod serverbound {
     use super::PacketSerializer;
-    use crate::serialize::ByteBuf;
+    use crate::serialize::buffer::*;
 
     use crate::serialize::var::*;
     use crate::serialize::string::*;
@@ -36,7 +36,7 @@ pub mod serverbound {
         fn serialize(&self, buf: &mut ByteBuf) {
             buf.write_var_int(self.protocol_version);
             buf.write_string(&self.address);
-            buf.vec.write_u16::<BigEndian>(self.port).unwrap();
+            buf.write_u16::<BigEndian>(self.port).unwrap();
             buf.write_var_int(self.next_state.clone() as i32);
         }
 

@@ -1,4 +1,4 @@
-use crate::ByteBuf;
+use crate::serialize::buffer::ByteBuf;
 
 #[derive(Debug, PartialEq)]
 pub enum DeserializeError {

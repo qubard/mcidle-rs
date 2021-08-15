@@ -1,4 +1,4 @@
-use crate::serialize::ByteBuf;
+use crate::serialize::buffer::ByteBuf;
 
 pub trait WriteBytes {
     fn write_bytes(&mut self, value: &[u8]);

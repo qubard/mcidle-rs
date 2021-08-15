@@ -1,4 +1,4 @@
-use crate::serialize::ByteBuf;
+use crate::serialize::buffer::ByteBuf;
 use crate::serialize::var::*;
 
 pub trait WriteString {
