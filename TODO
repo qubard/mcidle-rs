@@ -1,0 +1,8 @@
+- move bytebuf logic into its own file in serialize i think
+- more tests specific to bytebuffer??
+- interface implementation for bytebuffer/trait so we can swap out different implementations of it
+- other packets
+- encryption/decryption
+- compression
+- logging
+- protocol support
