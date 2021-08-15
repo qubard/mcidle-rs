@@ -6,3 +6,7 @@
 - compression
 - logging
 - protocol support
+
+in rust you can combine/inherit traits (interfaces) so you can make it as generic as possible without referring
+explicitly to a struct to just let others implement those interfaces and then your containers or whatever type
+behavior will be implicitly supported
