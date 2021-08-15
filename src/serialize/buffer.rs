@@ -37,8 +37,6 @@ impl ByteBuf {
     }
 }
 
-use byteorder::WriteBytesExt;
-
 impl std::io::Write for ByteBuf {
 
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
