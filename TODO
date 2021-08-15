@@ -6,6 +6,7 @@
 - compression
 - logging
 - protocol support
+- separate lib for string/bytes writer, or just bytebuf in general
 
 in rust you can combine/inherit traits (interfaces) so you can make it as generic as possible without referring
 explicitly to a struct to just let others implement those interfaces and then your containers or whatever type
