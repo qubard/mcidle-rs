@@ -1,4 +1,3 @@
-use byteorder::{LittleEndian, WriteBytesExt};
 use crate::serialize::ByteBuf;
 use crate::serialize::var::*;
 

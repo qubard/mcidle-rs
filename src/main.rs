@@ -1,9 +1,6 @@
 mod serialize;
 use serialize::{ByteBuf};
 use serialize::packet::*;
-use serialize::string::*;
-use serialize::var::*;
-
 use crate::serialize::packet::serverbound::*;
 
 fn main() {
