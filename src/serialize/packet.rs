@@ -5,21 +5,20 @@ pub trait PacketSerializer {
     fn deserialize(&mut self, buf: &mut ByteBuf);
 }
 
-pub mod clientbound {
-
-}
+pub mod clientbound {}
 
 pub mod serverbound {
     use super::PacketSerializer;
     use crate::serialize::buffer::*;
 
-    use crate::serialize::var::*;
     use crate::serialize::string::*;
+    use crate::serialize::var::*;
 
     use byteorder::{BigEndian, WriteBytesExt};
 
     #[derive(Debug, Clone)]
     pub enum LoginState {
+        Undefined = 0,
         Status = 1,
         Login = 2,
     }
@@ -61,5 +60,30 @@ pub mod serverbound {
             //self.username = buf.read_string().unwrap();
         }
     }
+}
 
+#[cfg(test)]
+mod tests {
+    use crate::serialize::buffer::*;
+    use crate::serialize::packet::serverbound::*;
+    use crate::serialize::packet::*;
+
+    #[test]
+    fn valid_serialize() {
+        let h = Handshake {
+            protocol_version: 340,
+            address: "localhost".to_string(),
+            port: 25565,
+            next_state: LoginState::Login,
+        };
+        let mut buf = ByteBuf::new();
+        h.serialize(&mut buf);
+        let mut h2 = Handshake {
+            protocol_version: 0,
+            address: "".to_string(),
+            port: 0,
+            next_state: LoginState::Undefined,
+        };
+        h2.deserialize(&mut buf);
+    }
 }
