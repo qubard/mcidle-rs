@@ -29,7 +29,12 @@ impl ByteBuf {
             }
         }
     }
+
+    pub fn as_slice(&self) -> &[u8] {
+        self.vec.as_slice()
+    }
 }
+
 
 impl StringWriter for ByteBuf {
     fn len(&self) -> usize {

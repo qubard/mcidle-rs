@@ -32,8 +32,14 @@ pub mod serverbound {
         pub next_state: LoginState,
     }
 
+    #[derive(Debug)]
+    pub struct LoginStart {
+        pub username: String,
+    }
+
     impl PacketSerializer for Handshake {
         fn serialize(&self, buf: &mut ByteBuf) {
+            buf.write_var_int(0x00); // packet id
             buf.write_var_int(self.protocol_version);
             buf.write_string(&self.address);
             buf.write_u16::<BigEndian>(self.port).unwrap();
@@ -42,6 +48,17 @@ pub mod serverbound {
 
         fn deserialize(&mut self, buf: &mut ByteBuf) {
             self.protocol_version = buf.read_var_int().unwrap();
+        }
+    }
+
+    impl PacketSerializer for LoginStart {
+        fn serialize(&self, buf: &mut ByteBuf) {
+            buf.write_var_int(0x00); // packet id
+            buf.write_string(&self.username);
+        }
+
+        fn deserialize(&mut self, buf: &mut ByteBuf) {
+            //self.username = buf.read_string().unwrap();
         }
     }
 
