@@ -19,14 +19,18 @@ fn main() {
     h.serialize(&mut buf);
     let iv = vec![0 as u8];
     let mut c = mc::Connection::new("localhost:25565".to_string());
-    c.send(&buf);
-
+    println!("Sent {} bytes!", c.send(&buf));
 
     let l = LoginStart {
         username: "test".to_string(),
     };
-    buf = ByteBuf::new();
+    let mut buf = ByteBuf::new();
     l.serialize(&mut buf);
-    c.send(&buf);
+    println!("Sent {} bytes!", c.send(&buf));
+
+    let mut arr = [0 as u8];
+    let nread = c.read(&mut arr); 
+    println!("Read {} bytes!", nread);
+
 }
 

@@ -69,7 +69,7 @@ mod tests {
     use crate::serialize::packet::*;
 
     #[test]
-    fn valid_serialize() {
+    fn valid_handshake_test() {
         let h = Handshake {
             protocol_version: 340,
             address: "localhost".to_string(),
