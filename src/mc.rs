@@ -33,10 +33,8 @@ impl Connection {
 
     pub fn init_cryptor(&mut self, iv: &[u8]) {
         // Note that the iv is the same as the key in Minecraft
-        let enc = Crypter::new(Cipher::aes_128_cbc(), Mode::Encrypt, iv, Some(iv)).unwrap();
-        let dec = Crypter::new(Cipher::aes_128_cbc(), Mode::Encrypt, iv, Some(iv)).unwrap();
-        self.enc = RefCell::new(Some(enc));
-        self.dec = RefCell::new(Some(dec));
+        self.enc = RefCell::new(Some(Crypter::new(Cipher::aes_128_cbc(), Mode::Encrypt, iv, Some(iv)).unwrap()));
+        self.dec = RefCell::new(Some(Crypter::new(Cipher::aes_128_cbc(), Mode::Decrypt, iv, Some(iv)).unwrap()));
     }
 
     pub fn read(&mut self, buf: &mut [u8]) -> usize {
@@ -44,13 +42,13 @@ impl Connection {
     }
 
     pub fn send(&mut self, buf: &ByteBuf) -> usize {
-        // Encrypt the buffer, then send it
-        // ???
+        // Prepend buffer with its length
         let mut final_buf = ByteBuf::new();
         final_buf.write_var_int(buf.len() as i32);
         final_buf.write(buf.as_slice()).unwrap();
 
         match self.enc.get_mut() {
+            // Encrypt the buffer, then send it
             Some(cryptor) => {
                 let encrypted = encrypt_plaintext(cryptor, final_buf.as_slice());
                 self.stream.write(&encrypted.as_slice()).unwrap()

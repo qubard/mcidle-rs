@@ -5,6 +5,7 @@ use crate::serialize::packet::serverbound::*;
 
 mod encrypt;
 use encrypt::*;
+use hex;
 
 mod mc;
 
@@ -28,9 +29,15 @@ fn main() {
     l.serialize(&mut buf);
     println!("Sent {} bytes!", c.send(&buf));
 
-    let mut arr = [0 as u8];
-    let nread = c.read(&mut arr); 
-    println!("Read {} bytes!", nread);
-
+    let mut arr = [0 as u8; 4096];
+    while true {
+        let nread = c.read(&mut arr);
+        println!("Read {} bytes!", nread);
+        let b: &[u8] = &arr[0..nread];
+        println!("{}", hex::encode(b));
+        if nread == 0 {
+            break
+        }
+    }
 }
 
