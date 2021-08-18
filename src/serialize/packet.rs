@@ -48,7 +48,7 @@ pub mod serverbound {
         fn deserialize(&mut self, buf: &mut ByteBuf) {
             self.protocol_version = buf.read_var_int().unwrap();
             self.address = buf.read_string().unwrap();
-            //self.port = buf.read_u16::<BigEndian>().unwrap();
+            self.port = buf.read_u16::<BigEndian>().unwrap();
             /*match buf.read_var_int().unwrap() {
                 LoginState::Status => {
                     self.next_state = LoginState::Status;
@@ -78,10 +78,11 @@ mod tests {
     use crate::serialize::buffer::*;
     use crate::serialize::packet::serverbound::*;
     use crate::serialize::packet::*;
+    use crate::serialize::var::*;
 
     #[test]
     fn valid_handshake_test() {
-        /*let h = Handshake {
+        let h = Handshake {
             protocol_version: 340,
             address: "localhost".to_string(),
             port: 25565,
@@ -95,6 +96,8 @@ mod tests {
             port: 0,
             next_state: LoginState::Undefined,
         };
-        h2.deserialize(&mut buf);*/
+        assert_eq!(0x00, buf.read_var_int().unwrap());
+        h2.deserialize(&mut buf);
+        //assert_eq!(h.port, h2.port);
     }
 }

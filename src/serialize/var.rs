@@ -2,6 +2,7 @@
 pub enum DeserializeError {
     VarIntTooBig, // Longer than 5 bytes
     BufferTooSmall,
+    InvalidLength, // Length <= 0
 }
 
 // Special trait for writing VarInt/VarLong

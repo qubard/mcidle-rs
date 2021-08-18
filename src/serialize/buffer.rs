@@ -72,12 +72,12 @@ impl std::io::Write for ByteBuf {
     }
 }
 
-/*impl std::io::Read for ByteBuf {
+impl std::io::Read for ByteBuf {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
-        buf = &mut self.vec.clone();
+        buf.copy_from_slice(&self.vec.as_slice()[0..buf.len()]);
         Ok(buf.len())
     }
-}*/
+}
 
 impl VarIntWriter for ByteBuf {
     fn write_var_int(&mut self, value: i32) {
