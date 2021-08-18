@@ -16,7 +16,7 @@ pub mod serverbound {
 
     use byteorder::{BigEndian, WriteBytesExt, ReadBytesExt};
 
-    #[derive(Debug, Clone)]
+    #[derive(Debug, Clone, PartialEq)]
     pub enum LoginState {
         Undefined = 0,
         Status = 1,
@@ -49,15 +49,15 @@ pub mod serverbound {
             self.protocol_version = buf.read_var_int().unwrap();
             self.address = buf.read_string().unwrap();
             self.port = buf.read_u16::<BigEndian>().unwrap();
-            /*match buf.read_var_int().unwrap() {
-                LoginState::Status => {
+            match buf.read_var_int().unwrap() {
+                1 => {
                     self.next_state = LoginState::Status;
                 },
                 2 =>
                     self.next_state = LoginState::Login
                 ,
                 _ => self.next_state = LoginState::Undefined
-            };*/
+            };
         }
     }
 
@@ -98,6 +98,9 @@ mod tests {
         };
         assert_eq!(0x00, buf.read_var_int().unwrap());
         h2.deserialize(&mut buf);
-        //assert_eq!(h.port, h2.port);
+        assert_eq!(h.protocol_version, h2.protocol_version);
+        assert_eq!(h.address, h2.address);
+        assert_eq!(h.port, h2.port);
+        assert_eq!(h.next_state, h2.next_state);
     }
 }

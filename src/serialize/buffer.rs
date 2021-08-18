@@ -1,5 +1,6 @@
 use crate::serialize::string::VarIntString;
 use crate::serialize::var::{DeserializeError, VarIntReader, VarIntWriter};
+use std::io::{Read, Write};
 
 pub struct ByteBuf {
     vec: Vec<u8>,
@@ -61,7 +62,7 @@ impl VarIntString for ByteBuf {
     }
 }
 
-impl std::io::Write for ByteBuf {
+impl Write for ByteBuf {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
         self.vec.reserve(buf.len());
         self.vec.write(buf)
@@ -72,9 +73,10 @@ impl std::io::Write for ByteBuf {
     }
 }
 
-impl std::io::Read for ByteBuf {
+impl Read for ByteBuf {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
-        buf.copy_from_slice(&self.vec.as_slice()[0..buf.len()]);
+        buf.copy_from_slice(&self.vec.as_slice()[self.read_idx..self.read_idx+buf.len()]);
+        self.read_idx += buf.len();
         Ok(buf.len())
     }
 }
