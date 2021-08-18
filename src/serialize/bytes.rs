@@ -1,5 +1,5 @@
 use crate::serialize::buffer::*;
-use crate::serialize::string::StringWriter;
+use crate::serialize::string::VarIntString;
 
 pub trait WriteBytes {
     fn write_bytes(&mut self, value: &[u8]);

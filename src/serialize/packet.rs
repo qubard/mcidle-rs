@@ -14,7 +14,7 @@ pub mod serverbound {
     use crate::serialize::string::*;
     use crate::serialize::var::*;
 
-    use byteorder::{BigEndian, WriteBytesExt};
+    use byteorder::{BigEndian, WriteBytesExt, ReadBytesExt};
 
     #[derive(Debug, Clone)]
     pub enum LoginState {
@@ -47,6 +47,17 @@ pub mod serverbound {
 
         fn deserialize(&mut self, buf: &mut ByteBuf) {
             self.protocol_version = buf.read_var_int().unwrap();
+            self.address = buf.read_string().unwrap();
+            //self.port = buf.read_u16::<BigEndian>().unwrap();
+            /*match buf.read_var_int().unwrap() {
+                LoginState::Status => {
+                    self.next_state = LoginState::Status;
+                },
+                2 =>
+                    self.next_state = LoginState::Login
+                ,
+                _ => self.next_state = LoginState::Undefined
+            };*/
         }
     }
 
@@ -57,7 +68,7 @@ pub mod serverbound {
         }
 
         fn deserialize(&mut self, buf: &mut ByteBuf) {
-            //self.username = buf.read_string().unwrap();
+            self.username = buf.read_string().unwrap();
         }
     }
 }
@@ -70,7 +81,7 @@ mod tests {
 
     #[test]
     fn valid_handshake_test() {
-        let h = Handshake {
+        /*let h = Handshake {
             protocol_version: 340,
             address: "localhost".to_string(),
             port: 25565,
@@ -84,6 +95,6 @@ mod tests {
             port: 0,
             next_state: LoginState::Undefined,
         };
-        h2.deserialize(&mut buf);
+        h2.deserialize(&mut buf);*/
     }
 }

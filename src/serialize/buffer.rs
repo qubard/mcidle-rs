@@ -1,4 +1,4 @@
-use crate::serialize::string::StringWriter;
+use crate::serialize::string::VarIntString;
 use crate::serialize::var::{DeserializeError, VarIntReader, VarIntWriter};
 
 pub struct ByteBuf {
@@ -30,6 +30,18 @@ impl ByteBuf {
         }
     }
 
+    pub fn read_bytes(&mut self, len: usize) -> Option<Vec<u8>> {
+        if self.read_idx + len - 1 >= self.len() {
+            None
+        } else {
+            let mut dest = Vec::new();
+            dest.resize(len, 0);
+            dest.copy_from_slice(&self.vec.as_slice()[self.read_idx..self.read_idx+len]);
+            self.read_idx += len;
+            Some(dest)
+        }
+    }
+
     pub fn as_slice(&self) -> &[u8] {
         self.vec.as_slice()
     }
@@ -39,7 +51,7 @@ impl ByteBuf {
     }
 }
 
-impl StringWriter for ByteBuf {
+impl VarIntString for ByteBuf {
     fn len(&self) -> usize {
         self.vec.len()
     }
@@ -59,6 +71,13 @@ impl std::io::Write for ByteBuf {
         self.vec.flush()
     }
 }
+
+/*impl std::io::Read for ByteBuf {
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        buf = &mut self.vec.clone();
+        Ok(buf.len())
+    }
+}*/
 
 impl VarIntWriter for ByteBuf {
     fn write_var_int(&mut self, value: i32) {
@@ -108,6 +127,7 @@ mod tests {
     use crate::serialize::buffer::*;
     use crate::serialize::bytes::*;
     use crate::serialize::var::*;
+    use crate::serialize::string::*;
 
     #[test]
     fn valid_varint_serialization() {
@@ -128,6 +148,28 @@ mod tests {
         id = -2147483648;
         buf.write_var_int(id);
         assert_eq!(id, buf.read_var_int().unwrap());
+    }
+
+    #[test]
+    fn valid_string_serialization() {
+        let mut buf = ByteBuf::new();
+        let mut s : String = "hello".to_string();
+        buf.write_string(&s);
+        let x : i32 = 0xFFFEE;
+        buf.write_var_int(x);
+        let res = buf.read_string();
+        assert_eq!(true, res.is_ok());
+        assert_eq!(s, res.unwrap());
+        assert_eq!(x, buf.read_var_int().unwrap());
+        assert_eq!(9, buf.len());
+
+        buf = ByteBuf::new();
+        s= "Привет".to_string();
+        buf.write_string(&s);
+        let res = buf.read_string();
+        assert_eq!(true, res.is_ok());
+        assert_eq!(s, res.unwrap());
+        assert_eq!(13, buf.len());
     }
 
     #[test]
