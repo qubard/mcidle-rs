@@ -1,13 +1,6 @@
 - move bytebuf logic into its own file in serialize i think
-- more tests specific to bytebuffer??
-- interface implementation for bytebuffer/trait so we can swap out different implementations of it
 - other packets
-- encryption/decryption
+- encryption/decryption (not RSA yet)
 - compression
 - logging
 - protocol support
-- separate lib for string/bytes writer, or just bytebuf in general
-
-in rust you can combine/inherit traits (interfaces) so you can make it as generic as possible without referring
-explicitly to a struct to just let others implement those interfaces and then your containers or whatever type
-behavior will be implicitly supported

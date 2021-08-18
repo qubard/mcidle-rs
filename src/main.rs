@@ -26,13 +26,7 @@ fn main() {
 
     let mut arr = [0 as u8; 4096];
     loop {
-        let nread = c.read(&mut arr);
-        println!("Read {} bytes!", nread);
-        let b: &[u8] = &arr[0..nread];
-        println!("{}", hex::encode(b));
-        if nread == 0 {
-            break
-        }
+        c.recv();
     }
 }
 

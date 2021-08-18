@@ -7,6 +7,18 @@ pub struct ByteBuf {
     pub read_idx: usize,
 }
 
+impl From<&[u8]> for ByteBuf {
+    fn from(slice: &[u8]) -> Self {
+        let mut v = Vec::new();
+        v.resize(slice.len(), 0 as u8);
+        v.copy_from_slice(slice);
+        ByteBuf {
+            vec: v,
+            read_idx: 0,
+        }
+    }
+}
+
 impl ByteBuf {
     pub fn new() -> ByteBuf {
         ByteBuf {
@@ -29,6 +41,11 @@ impl ByteBuf {
                 Some(read_idx_byte)
             }
         }
+    }
+    
+    pub fn end(&self) -> bool {
+        println!("{} {}", self.read_idx, self.vec.len());
+        self.read_idx >= self.vec.len()
     }
 
     pub fn read_bytes(&mut self, len: usize) -> Option<Vec<u8>> {

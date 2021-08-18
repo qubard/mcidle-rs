@@ -5,3 +5,5 @@ edition = "2018"
 
 [dependencies]
 byteorder = "1.4.3"
+openssl = "0.10.35"
+hex = "0.4.3"
