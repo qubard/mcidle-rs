@@ -37,7 +37,7 @@ impl ByteBuf {
         } else {
             let mut dest = Vec::new();
             dest.resize(len, 0);
-            dest.copy_from_slice(&self.vec.as_slice()[self.read_idx..self.read_idx+len]);
+            dest.copy_from_slice(&self.vec.as_slice()[self.read_idx..self.read_idx + len]);
             self.read_idx += len;
             Some(dest)
         }
@@ -75,7 +75,7 @@ impl Write for ByteBuf {
 
 impl Read for ByteBuf {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
-        buf.copy_from_slice(&self.vec.as_slice()[self.read_idx..self.read_idx+buf.len()]);
+        buf.copy_from_slice(&self.vec.as_slice()[self.read_idx..self.read_idx + buf.len()]);
         self.read_idx += buf.len();
         Ok(buf.len())
     }
@@ -128,8 +128,8 @@ impl VarIntReader for ByteBuf {
 mod tests {
     use crate::serialize::buffer::*;
     use crate::serialize::bytes::*;
-    use crate::serialize::var::*;
     use crate::serialize::string::*;
+    use crate::serialize::var::*;
 
     #[test]
     fn valid_varint_serialization() {
@@ -155,9 +155,9 @@ mod tests {
     #[test]
     fn valid_string_serialization() {
         let mut buf = ByteBuf::new();
-        let mut s : String = "hello".to_string();
+        let mut s: String = "hello".to_string();
         buf.write_string(&s);
-        let x : i32 = 0xFFFEE;
+        let x: i32 = 0xFFFEE;
         buf.write_var_int(x);
         let res = buf.read_string();
         assert_eq!(true, res.is_ok());
@@ -166,7 +166,7 @@ mod tests {
         assert_eq!(9, buf.len());
 
         buf = ByteBuf::new();
-        s= "Привет".to_string();
+        s = "Привет".to_string();
         buf.write_string(&s);
         let res = buf.read_string();
         assert_eq!(true, res.is_ok());
