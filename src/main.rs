@@ -24,7 +24,6 @@ fn main() {
     };
     println!("Sent {} bytes!", c.send_packet(&login_start));
 
-    let mut arr = [0 as u8; 4096];
     loop {
         c.recv();
     }

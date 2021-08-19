@@ -5,7 +5,8 @@ use std::net::TcpStream;
 
 use crate::encrypt::*;
 
-use crate::serialize::packet::PacketSerializerWithID;
+use crate::serialize::packet;
+use crate::serialize::packet::Packet;
 use crate::serialize::protocol::ProtocolVersion;
 use crate::serialize::var::*;
 use std::cell::RefCell;
@@ -18,6 +19,7 @@ pub struct Connection {
     dec: RefCrypter,
     stream: TcpStream,
     ver: ProtocolVersion,
+    compression: Option<i32>, // compression threshold
 }
 
 impl Connection {
@@ -27,6 +29,7 @@ impl Connection {
             dec: RefCrypter::new(None),
             stream: TcpStream::connect(addr).unwrap(),
             ver,
+            compression: None,
         }
     }
 
@@ -40,7 +43,7 @@ impl Connection {
         self.stream.read(buf).unwrap()
     }*/
 
-    pub fn send_packet(&mut self, packet: &impl PacketSerializerWithID) -> usize {
+    pub fn send_packet(&mut self, packet: &impl Packet) -> usize {
         // Write and prepend packet buffer with its length
         let buf = packet.serialize_with_id(&self.ver);
         let mut final_buf = ByteBuf::new();
@@ -71,8 +74,7 @@ impl Connection {
                 match rest {
                     Some(v) => {
                         let mut rest_buf = ByteBuf::from(v.as_slice());
-                        let packet_id = (rest_buf.read_var_int().unwrap()) as u8;
-                        println!("Got packet id: 0x{}", format!("{:x}", packet_id));
+                        packet::invoke_handler(&mut rest_buf);
                     },
                     None => { 
                         panic!("unexpected none rest");

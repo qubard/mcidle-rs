@@ -44,7 +44,6 @@ impl ByteBuf {
     }
     
     pub fn end(&self) -> bool {
-        println!("{} {}", self.read_idx, self.vec.len());
         self.read_idx >= self.vec.len()
     }
 

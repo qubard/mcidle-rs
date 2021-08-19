@@ -7,35 +7,72 @@ pub trait PacketSerializer: ProtocolToID {
     fn deserialize(&mut self, buf: &mut ByteBuf);
 }
 
-pub trait PacketSerializerWithID: PacketSerializer + ProtocolToID {
+pub trait Packet: PacketSerializer + ProtocolToID + Default {
     fn serialize_with_id(&self, ver: &ProtocolVersion) -> Box<ByteBuf>;
-    fn deserialize_with_id(&mut self, buf: &mut ByteBuf);
+    fn deserialize_gen(buf: &mut ByteBuf) -> Box<Self>;
 }
 
-impl<T> PacketSerializerWithID for T
+impl<T: Default> Packet for T
 where
-    T: PacketSerializer + ProtocolToID,
+    T: PacketSerializer + ProtocolToID + PacketHandler
 {
     fn serialize_with_id(&self, ver: &ProtocolVersion) -> Box<ByteBuf> {
-        let mut buf = ByteBuf::new();
+        let mut buf = Box::new(ByteBuf::new());
         buf.write_var_int(self.resolve_id(ver));
         self.serialize(&mut buf, &ver);
-        Box::new(buf)
+        buf
     }
 
-    fn deserialize_with_id(&mut self, buf: &mut ByteBuf) {
-        buf.read_var_int().unwrap(); // read off packet id, do nothing for now
-        self.deserialize(buf);
+    fn deserialize_gen(buf: &mut ByteBuf) -> Box<T> {
+        let mut p : T = Default::default();
+        p.deserialize(buf);
+        Box::new(p)
+    }
+}
+
+pub trait PacketHandler {
+    fn handle(&self);
+}
+
+#[derive(PartialEq)]
+pub enum PacketID {
+    KeepAliveCB = 0x1F,
+    KeepAliveSB = 0x0B,
+    SetCompression = 0x03,
+    Handshake = 0x00,
+}
+// You could make each of these structs implement their own trait handlers
+// and that would basically be a form of vtable/virtual inheritance
+// but..it would be kinda ugly and not really make sense
+// you could make them invoke a handler that passes themselves
+// in as an argument
+//
+//
+// I think the second solution is good
+// but it wouldnt work either because you can't generically define
+// a handlermap for impl Packet
+
+pub fn invoke_handler(buf: &mut ByteBuf) {
+    let id : i32 = buf.read_var_int().unwrap();
+    match id {
+        0x03 => { 
+            clientbound::SetCompression::deserialize_gen(buf).handle();
+        }
+        _ => { 
+            println!("unknown packet with id: {:x}", id);
+        }
     }
 }
 
 pub mod clientbound {
-    use super::PacketSerializer;
+    use super::{PacketID, PacketSerializer, PacketHandler};
     use crate::serialize::protocol::{ProtocolVersion, ProtocolToID};
     use crate::serialize::buffer::ByteBuf;
+    use crate::serialize::var::*;
     use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 
-    #[derive(Debug)]
+    // TODO: custom derive PacketHandler
+    #[derive(Debug,Default)]
     pub struct KeepAlive {
         pub id: i64,
     }
@@ -43,7 +80,7 @@ pub mod clientbound {
     impl ProtocolToID for KeepAlive {
         fn resolve_id(&self, ver: &ProtocolVersion) -> i32 {
             match ver {
-                _ => 0x1F,
+                _ => PacketID::KeepAliveCB as i32,
             }
         }
     }
@@ -57,10 +94,39 @@ pub mod clientbound {
             self.id = buf.read_i64::<BigEndian>().unwrap();
         }
     }
+
+    impl PacketHandler for SetCompression {
+        fn handle(&self) {
+            println!("my threshold is : {}", self.threshold);
+        }
+    }
+
+    #[derive(Debug,Default)]
+    pub struct SetCompression {
+        pub threshold: i32,
+    }
+
+    impl ProtocolToID for SetCompression {
+        fn resolve_id(&self, ver: &ProtocolVersion) -> i32 {
+            match ver {
+                _ => PacketID::SetCompression as i32,
+            }
+        }
+    }
+
+    impl PacketSerializer for SetCompression {
+        fn serialize(&self, buf: &mut ByteBuf, _: &ProtocolVersion) {
+            buf.write_var_int(self.threshold);
+        }
+
+        fn deserialize(&mut self, buf: &mut ByteBuf) {
+            self.threshold = buf.read_var_int().unwrap();
+        }
+    }
 }
 
 pub mod serverbound {
-    use super::PacketSerializer;
+    use super::{PacketID, PacketHandler, PacketSerializer};
 
     use crate::serialize::buffer::*;
     use crate::serialize::protocol::{ProtocolToID, ProtocolVersion};
@@ -76,7 +142,11 @@ pub mod serverbound {
         Login = 2,
     }
 
-    #[derive(Debug)]
+    impl Default for LoginState {
+        fn default() -> Self { LoginState::Undefined }
+    }
+
+    #[derive(Debug, Default)]
     pub struct Handshake {
         pub protocol_version: i32,
         pub address: String,
@@ -89,7 +159,7 @@ pub mod serverbound {
         pub id: i64,
     }
 
-    #[derive(Debug)]
+    #[derive(Debug, Default)]
     pub struct LoginStart {
         pub username: String,
     }
@@ -97,15 +167,21 @@ pub mod serverbound {
     impl ProtocolToID for Handshake {
         fn resolve_id(&self, ver: &ProtocolVersion) -> i32 {
             match ver {
-                _ => 0x00,
+                _ => PacketID::Handshake as i32,
             }
+        }
+    }
+
+    impl PacketHandler for Handshake {
+        fn handle(&self) {
+            println!("Handled handshake");
         }
     }
 
     impl ProtocolToID for KeepAlive {
         fn resolve_id(&self, ver: &ProtocolVersion) -> i32 {
             match ver {
-                _ => 0x0B,
+                _ => PacketID::KeepAliveSB as i32,
             }
         }
     }
@@ -150,6 +226,12 @@ pub mod serverbound {
         }
     }
 
+    impl PacketHandler for LoginStart {
+        fn handle(&self) {
+
+        }
+    }
+
     impl PacketSerializer for LoginStart {
         fn serialize(&self, buf: &mut ByteBuf, _: &ProtocolVersion) {
             buf.write_string(&self.username);
@@ -165,6 +247,7 @@ pub mod serverbound {
 mod tests {
     use crate::serialize::packet::serverbound::*;
     use crate::serialize::packet::*;
+    use super::PacketID;
 
     #[test]
     fn valid_handshake_test() {
@@ -178,14 +261,8 @@ mod tests {
         let mut buf = h.serialize_with_id(&ProtocolVersion::V_1_12_2);
         assert_eq!(16, buf.len());
 
-        let mut h2 = Handshake {
-            protocol_version: 0,
-            address: "".to_string(),
-            port: 0,
-            next_state: LoginState::Undefined,
-        };
-
-        h2.deserialize_with_id(&mut buf);
+        assert_eq!(PacketID::Handshake as i32, buf.read_var_int().unwrap());
+        let h2 = serverbound::Handshake::deserialize_gen(buf.as_mut());
         assert_eq!(h.protocol_version, h2.protocol_version);
         assert_eq!(h.address, h2.address);
         assert_eq!(h.port, h2.port);
