@@ -70,11 +70,16 @@ impl Connection {
             Ok(n) => {
                 let mut buf = ByteBuf::from(&slice[..n]);
                 let len = buf.read_var_int().unwrap();
-                let rest = buf.read_bytes(len as usize);
-                match rest {
+                match buf.read_bytes(len as usize) {
                     Some(v) => {
-                        let mut rest_buf = ByteBuf::from(v.as_slice());
-                        packet::invoke_handler(&mut rest_buf);
+                        let mut packet_buf = ByteBuf::from(v.as_slice());
+                        let id : i32 = packet_buf.read_var_int().unwrap();
+                        match packet::deserialize_packet(id, &mut packet_buf) {
+                            Some(pkt) => {
+                                pkt.handle();
+                            }
+                            None => println!("cannot find packet handler for id: {}", id)
+                        }
                     },
                     None => { 
                         panic!("unexpected none rest");

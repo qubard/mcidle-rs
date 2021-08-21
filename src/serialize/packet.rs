@@ -1,20 +1,18 @@
 use crate::serialize::buffer::ByteBuf;
 use crate::serialize::protocol::{ProtocolToID, ProtocolVersion};
-use crate::serialize::var::{VarIntWriter, VarIntReader};
+use crate::serialize::var::{VarIntReader, VarIntWriter};
 
 pub trait PacketSerializer: ProtocolToID {
     fn serialize(&self, buf: &mut ByteBuf, ver: &ProtocolVersion);
     fn deserialize(&mut self, buf: &mut ByteBuf);
 }
 
-pub trait Packet: PacketSerializer + ProtocolToID + Default {
+pub trait Packet: PacketSerializer + ProtocolToID + Default + PacketHandler {
     fn serialize_with_id(&self, ver: &ProtocolVersion) -> Box<ByteBuf>;
     fn deserialize_gen(buf: &mut ByteBuf) -> Box<Self>;
 }
 
-impl<T: Default> Packet for T
-where
-    T: PacketSerializer + ProtocolToID + PacketHandler
+impl<T: PacketSerializer + ProtocolToID + PacketHandler + Default> Packet for T
 {
     fn serialize_with_id(&self, ver: &ProtocolVersion) -> Box<ByteBuf> {
         let mut buf = Box::new(ByteBuf::new());
@@ -24,7 +22,7 @@ where
     }
 
     fn deserialize_gen(buf: &mut ByteBuf) -> Box<T> {
-        let mut p : T = Default::default();
+        let mut p: T = Default::default();
         p.deserialize(buf);
         Box::new(p)
     }
@@ -41,38 +39,27 @@ pub enum PacketID {
     SetCompression = 0x03,
     Handshake = 0x00,
 }
-// You could make each of these structs implement their own trait handlers
-// and that would basically be a form of vtable/virtual inheritance
-// but..it would be kinda ugly and not really make sense
-// you could make them invoke a handler that passes themselves
-// in as an argument
-//
-//
-// I think the second solution is good
-// but it wouldnt work either because you can't generically define
-// a handlermap for impl Packet
 
-pub fn invoke_handler(buf: &mut ByteBuf) {
-    let id : i32 = buf.read_var_int().unwrap();
+pub fn deserialize_packet(id: i32, buf: &mut ByteBuf) -> Option<Box<dyn PacketHandler>> {
     match id {
         0x03 => { 
-            clientbound::SetCompression::deserialize_gen(buf).handle();
+            Some(clientbound::SetCompression::deserialize_gen(buf))
         }
         _ => { 
-            println!("unknown packet with id: {:x}", id);
+            None
         }
     }
 }
 
 pub mod clientbound {
-    use super::{PacketID, PacketSerializer, PacketHandler};
-    use crate::serialize::protocol::{ProtocolVersion, ProtocolToID};
+    use super::{PacketHandler, PacketID, PacketSerializer};
     use crate::serialize::buffer::ByteBuf;
+    use crate::serialize::protocol::{ProtocolToID, ProtocolVersion};
     use crate::serialize::var::*;
     use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 
     // TODO: custom derive PacketHandler
-    #[derive(Debug,Default)]
+    #[derive(Debug, Default)]
     pub struct KeepAlive {
         pub id: i64,
     }
@@ -95,15 +82,15 @@ pub mod clientbound {
         }
     }
 
+    #[derive(Debug, Default)]
+    pub struct SetCompression {
+        pub threshold: i32,
+    }
+
     impl PacketHandler for SetCompression {
         fn handle(&self) {
             println!("my threshold is : {}", self.threshold);
         }
-    }
-
-    #[derive(Debug,Default)]
-    pub struct SetCompression {
-        pub threshold: i32,
     }
 
     impl ProtocolToID for SetCompression {
@@ -126,7 +113,7 @@ pub mod clientbound {
 }
 
 pub mod serverbound {
-    use super::{PacketID, PacketHandler, PacketSerializer};
+    use super::{PacketHandler, PacketID, PacketSerializer};
 
     use crate::serialize::buffer::*;
     use crate::serialize::protocol::{ProtocolToID, ProtocolVersion};
@@ -143,7 +130,9 @@ pub mod serverbound {
     }
 
     impl Default for LoginState {
-        fn default() -> Self { LoginState::Undefined }
+        fn default() -> Self {
+            LoginState::Undefined
+        }
     }
 
     #[derive(Debug, Default)]
@@ -227,9 +216,7 @@ pub mod serverbound {
     }
 
     impl PacketHandler for LoginStart {
-        fn handle(&self) {
-
-        }
+        fn handle(&self) {}
     }
 
     impl PacketSerializer for LoginStart {
@@ -245,9 +232,9 @@ pub mod serverbound {
 
 #[cfg(test)]
 mod tests {
+    use super::PacketID;
     use crate::serialize::packet::serverbound::*;
     use crate::serialize::packet::*;
-    use super::PacketID;
 
     #[test]
     fn valid_handshake_test() {
