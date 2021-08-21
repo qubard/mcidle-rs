@@ -64,24 +64,39 @@ impl Connection {
         }
     }
 
+    pub fn compression_enabled(&self) -> bool {
+        self.compression.is_some()
+    }
+
     pub fn recv(&mut self) {
         let mut slice: &mut [u8] = &mut [0 as u8; 4096];
         match self.stream.read(&mut slice) {
             Ok(n) => {
                 let mut buf = ByteBuf::from(&slice[..n]);
-                let len = buf.read_var_int().unwrap();
+                let mut len = buf.read_var_int().unwrap();
+
                 match buf.read_bytes(len as usize) {
-                    Some(v) => {
-                        let mut packet_buf = ByteBuf::from(v.as_slice());
-                        let id : i32 = packet_buf.read_var_int().unwrap();
-                        match packet::deserialize_packet(id, &mut packet_buf) {
-                            Some(pkt) => {
-                                pkt.handle();
-                            }
-                            None => println!("cannot find packet handler for id: {}", id)
+                    Some(b) => {
+                        if self.compression_enabled() {
+                            // uncompressed length
+                            len = buf.read_var_int().unwrap();
+
+                            let mut out: Vec<u8> = Vec::with_capacity(len as usize);
+
+                            let mut decompressor = flate2::Decompress::new(true);
+                            decompressor
+                                .decompress_vec(
+                                    b.as_slice(),
+                                    &mut out,
+                                    flate2::FlushDecompress::None,
+                                )
+                                .unwrap();
+
+                            // zlib inflate into another slice, override b
                         }
-                    },
-                    None => { 
+                        packet::deserialize_and_invoke_handler(b.as_slice());
+                    }
+                    None => {
                         panic!("unexpected none rest");
                     }
                 }
@@ -90,7 +105,12 @@ impl Connection {
                     panic!("NOT AT END");
                 }
 
-                println!("size: {}, len: {}, data: {}", n, len, hex::encode(&slice[..n]));
+                println!(
+                    "size: {}, len: {}, data: {}",
+                    n,
+                    len,
+                    hex::encode(&slice[..n])
+                );
             }
             Err(e) => panic!(e),
         }

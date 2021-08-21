@@ -12,8 +12,7 @@ pub trait Packet: PacketSerializer + ProtocolToID + Default + PacketHandler {
     fn deserialize_gen(buf: &mut ByteBuf) -> Box<Self>;
 }
 
-impl<T: PacketSerializer + ProtocolToID + PacketHandler + Default> Packet for T
-{
+impl<T: PacketSerializer + ProtocolToID + PacketHandler + Default> Packet for T {
     fn serialize_with_id(&self, ver: &ProtocolVersion) -> Box<ByteBuf> {
         let mut buf = Box::new(ByteBuf::new());
         buf.write_var_int(self.resolve_id(ver));
@@ -40,14 +39,21 @@ pub enum PacketID {
     Handshake = 0x00,
 }
 
-pub fn deserialize_packet(id: i32, buf: &mut ByteBuf) -> Option<Box<dyn PacketHandler>> {
+pub fn deserialize_and_invoke_handler(slice: &[u8]) {
+    let mut packet_buf = ByteBuf::from(slice);
+    let id: i32 = packet_buf.read_var_int().unwrap();
+    match deserialize_packet_handler(id, &mut packet_buf) {
+        Some(pkt) => {
+            pkt.handle();
+        }
+        None => println!("cannot find packet handler for id: {}", id),
+    }
+}
+
+fn deserialize_packet_handler(id: i32, buf: &mut ByteBuf) -> Option<Box<dyn PacketHandler>> {
     match id {
-        0x03 => { 
-            Some(clientbound::SetCompression::deserialize_gen(buf))
-        }
-        _ => { 
-            None
-        }
+        0x03 => Some(clientbound::SetCompression::deserialize_gen(buf)),
+        _ => None,
     }
 }
 
