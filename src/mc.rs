@@ -68,15 +68,16 @@ impl Connection {
         self.compression.is_some()
     }
 
-    pub fn recv(&mut self) {
+    pub fn read_packets(&mut self) -> Vec<(i32, ByteBuf)> {
         let mut slice: &mut [u8] = &mut [0 as u8; 4096];
+        let mut packets = Vec::new();
         match self.stream.read(&mut slice) {
             Ok(n) => {
                 let mut buf = ByteBuf::from(&slice[..n]);
                 let mut len = buf.read_var_int().unwrap();
 
                 match buf.read_bytes(len as usize) {
-                    Some(b) => {
+                    Some(vec) => {
                         if self.compression_enabled() {
                             // uncompressed length
                             len = buf.read_var_int().unwrap();
@@ -86,7 +87,7 @@ impl Connection {
                             let mut decompressor = flate2::Decompress::new(true);
                             decompressor
                                 .decompress_vec(
-                                    b.as_slice(),
+                                    vec.as_slice(),
                                     &mut out,
                                     flate2::FlushDecompress::None,
                                 )
@@ -94,7 +95,11 @@ impl Connection {
 
                             // zlib inflate into another slice, override b
                         }
-                        packet::deserialize_and_invoke_handler(b.as_slice());
+
+                        let mut box_buf = ByteBuf::from(&vec);
+                        let id: i32 = box_buf.read_var_int().unwrap();
+                        println!("{}", id);
+                        packets.push((id, box_buf));
                     }
                     None => {
                         panic!("unexpected none rest");
@@ -114,5 +119,7 @@ impl Connection {
             }
             Err(e) => panic!(e),
         }
+
+        packets.clone()
     }
 }

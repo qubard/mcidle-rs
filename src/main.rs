@@ -25,7 +25,11 @@ fn main() {
     println!("Sent {} bytes!", c.send_packet(&login_start));
 
     loop {
-        c.recv();
+        let pkts = c.read_packets();
+        for (id, _) in &pkts {
+            println!("P: {} id: {}" , pkts.len(), id);
+        }
+        println!("done read call");
     }
 }
 

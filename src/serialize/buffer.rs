@@ -2,6 +2,7 @@ use crate::serialize::string::VarIntString;
 use crate::serialize::var::{DeserializeError, VarIntReader, VarIntWriter};
 use std::io::{Read, Write};
 
+#[derive(Clone)]
 pub struct ByteBuf {
     vec: Vec<u8>,
     pub read_idx: usize,
@@ -16,6 +17,12 @@ impl From<&[u8]> for ByteBuf {
             vec: v,
             read_idx: 0,
         }
+    }
+}
+
+impl From<&Vec<u8>> for ByteBuf {
+    fn from(vec: &Vec<u8>) -> Self {
+        ByteBuf::from(vec.as_slice())
     }
 }
 
