@@ -20,7 +20,7 @@ impl<T: PacketSerializer + ProtocolToID + PacketHandler> Packet for T {
     }
 }
 
-fn deserialize_gen<T: Default + Packet>(buf: &mut ByteBuf) -> Box<T> {
+fn deserialize_new<T: Default + Packet>(buf: &mut ByteBuf) -> Box<T> {
     let mut p: T = T::default();
     p.deserialize(buf);
     Box::new(p)
@@ -41,7 +41,7 @@ pub enum PacketID {
 fn deserialize_into_packet(id: i32, buf: &mut ByteBuf) -> Option<Box<dyn Packet>> {
     match id {
         // TODO: fix this
-        0x03 => Some(deserialize_gen::<clientbound::SetCompression>(buf)),
+        0x03 => Some(deserialize_new::<clientbound::SetCompression>(buf)),
         _ => None,
     }
 }
@@ -244,7 +244,7 @@ mod tests {
         assert_eq!(16, buf.len());
 
         assert_eq!(PacketID::Handshake as i32, buf.read_var_int().unwrap());
-        let h2 = serverbound::Handshake::deserialize_gen(buf.as_mut());
+        let h2 = deserialize_new::<Handshake>(buf.as_mut());
         assert_eq!(h.protocol_version, h2.protocol_version);
         assert_eq!(h.address, h2.address);
         assert_eq!(h.port, h2.port);

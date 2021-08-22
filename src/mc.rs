@@ -5,7 +5,6 @@ use std::net::TcpStream;
 
 use crate::encrypt::*;
 
-use crate::serialize::packet;
 use crate::serialize::packet::Packet;
 use crate::serialize::protocol::ProtocolVersion;
 use crate::serialize::var::*;
@@ -98,7 +97,6 @@ impl Connection {
 
                         let mut box_buf = ByteBuf::from(&vec);
                         let id: i32 = box_buf.read_var_int().unwrap();
-                        println!("{}", id);
                         packets.push((id, box_buf));
                     }
                     None => {
