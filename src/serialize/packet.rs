@@ -244,7 +244,7 @@ mod tests {
         assert_eq!(16, buf.len());
 
         assert_eq!(PacketID::Handshake as i32, buf.read_var_int().unwrap());
-        let h2 = deserialize_new::<Handshake>(buf.as_mut());
+        let h2 = deserialize_new::<Handshake>(&mut buf);
         assert_eq!(h.protocol_version, h2.protocol_version);
         assert_eq!(h.address, h2.address);
         assert_eq!(h.port, h2.port);
