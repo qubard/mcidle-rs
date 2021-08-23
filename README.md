@@ -1,6 +1,6 @@
-# mcidle-rs
+# mcidle-rs 🦀
 
-A port of mcidle to [Rust](https://www.rust-lang.org/) 😂.
+A port of mcidle to [Rust](https://www.rust-lang.org/).
 
 Currently a work in progress.
 
@@ -15,5 +15,6 @@ Currently a work in progress.
 - [x] Serialization of primitives
 - [x] Coverage support
 - [ ] Multiple protocols (codec?)
+- [ ] Refactoring libs into crates
 
 Lots more I'm probably missing.
