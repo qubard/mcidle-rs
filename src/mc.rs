@@ -1,17 +1,10 @@
 use crate::serialize::buffer::*;
-use openssl::symm::Crypter;
-
 use std::net::TcpStream;
-
-use crate::encrypt::*;
 
 use crate::serialize::packet::Packet;
 use crate::serialize::protocol::ProtocolVersion;
 use crate::serialize::var::*;
-use std::cell::RefCell;
 use std::io::{Read, Write};
-
-type RefCrypter = RefCell<Option<Crypter>>;
 
 #[derive(Copy, Clone)]
 #[repr(u32)]
@@ -20,7 +13,6 @@ pub enum BufferSize {
 }
 
 pub struct Connection {
-    enc: RefCrypter,
     stream: TcpStream,
     ver: ProtocolVersion,
     compression: Option<i32>, // compression threshold
@@ -30,7 +22,6 @@ pub struct Connection {
 impl Connection {
     pub fn new(addr: String, ver: ProtocolVersion, chunk_size: BufferSize) -> Connection {
         Connection {
-            enc: RefCrypter::new(None),
             stream: TcpStream::connect(addr).unwrap(),
             ver,
             compression: None,
@@ -70,23 +61,16 @@ impl Connection {
         self.send_buffer(&final_buf)
     }
 
-    pub fn send_buffer(&mut self, buf: &ByteBuf) -> usize {
-        match self.enc.get_mut() {
-            // Encrypt the buffer, then send it
-            Some(cryptor) => {
-                let encrypted = encrypt_plaintext(cryptor, buf.as_slice());
-                self.stream.write(encrypted.as_slice()).unwrap()
-            }
-            None => self.stream.write(buf.as_slice()).unwrap(),
-        }
-    }
-
     pub fn compression_enabled(&self) -> bool {
         self.compression.is_some()
     }
 
     pub fn set_compression_threshold(&mut self, threshold: i32) {
         self.compression = Some(threshold);
+    }
+
+    pub fn send_buffer(&mut self, buf: &ByteBuf) -> usize {
+        self.stream.write(buf.as_slice()).unwrap()
     }
 
     fn read_packet(&self, len: i32, buf: &mut ByteBuf) -> (i32, ByteBuf) {

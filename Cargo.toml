@@ -5,6 +5,5 @@ edition = "2018"
 
 [dependencies]
 byteorder = "1.4.3"
-openssl = "0.10.35"
 hex = "0.4.3"
 flate2 = { version = "1.0.20", features = ["zlib-ng-compat"], default-features = false }

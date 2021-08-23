@@ -3,7 +3,6 @@ use crate::serialize::packet;
 use crate::serialize::packet::serverbound::*;
 use crate::serialize::protocol::ProtocolVersion;
 
-mod encrypt;
 mod mc;
 
 fn main() {
