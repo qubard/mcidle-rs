@@ -8,15 +8,10 @@ pub struct ByteBuf {
     read_idx: usize,
 }
 
-#[derive(Debug, PartialEq)]
-pub enum SeekError {
-    TooFar,
-}
-
 impl From<&[u8]> for ByteBuf {
     fn from(slice: &[u8]) -> Self {
         let mut v = Vec::new();
-        v.resize(slice.len(), 0 as u8);
+        v.resize(slice.len(), 0_u8);
         v.copy_from_slice(slice);
         ByteBuf {
             vec: v,
@@ -57,8 +52,8 @@ impl ByteBuf {
     }
 
     // returns true iff buffer has `remaining` bytes available to read
-    pub fn has_readable_bytes(&self, len : usize) -> bool {
-        self.remaining() >= len 
+    pub fn has_readable_bytes(&self, len: usize) -> bool {
+        self.remaining() >= len
     }
 
     pub fn remaining(&self) -> usize {
@@ -67,7 +62,7 @@ impl ByteBuf {
 
     // TODO: read trait?
     pub fn read_bytes(&mut self, len: usize) -> Option<Vec<u8>> {
-        if self.read_idx + len - 1 >= self.len() {
+        if self.read_idx + len > self.len() {
             None
         } else {
             let mut dest = Vec::new();
@@ -124,7 +119,7 @@ impl VarIntWriter for ByteBuf {
     fn write_var_int(&mut self, value: i32) {
         let mut value: i32 = value;
         if value == 0 {
-            self.push(0 as u8);
+            self.push(0_u8);
         }
 
         while value != 0 {
@@ -201,7 +196,7 @@ mod tests {
         let mut i = 0;
         while i < 31 {
             buf = ByteBuf::new();
-            id = (1<<i)-1;
+            id = (1 << i) - 1;
             buf.write_var_int(id);
             assert_eq!(id, buf.read_var_int().unwrap());
             i += 1;
@@ -216,7 +211,7 @@ mod tests {
         let x: i32 = 0xFFFEE;
         buf.write_var_int(x);
         let res = buf.read_string();
-        assert_eq!(true, res.is_ok());
+        assert!(res.is_ok());
         assert_eq!(s, res.unwrap());
         assert_eq!(x, buf.read_var_int().unwrap());
         assert_eq!(9, buf.len());
@@ -225,7 +220,7 @@ mod tests {
         s = "Привет".to_string();
         buf.write_string(&s);
         let res = buf.read_string();
-        assert_eq!(true, res.is_ok());
+        assert!(res.is_ok());
         assert_eq!(s, res.unwrap());
         assert_eq!(13, buf.len());
     }
@@ -234,7 +229,7 @@ mod tests {
     fn invalid_varint_serialization_too_small() {
         let mut buf = ByteBuf::new();
 
-        let arr = [0xFF as u8; 3];
+        let arr = [0xFF_u8; 3];
         buf.write_bytes(&arr);
         assert_eq!(arr.len(), buf.len());
 
@@ -248,7 +243,7 @@ mod tests {
     fn invalid_varint_serialization_too_big() {
         let mut buf = ByteBuf::new();
 
-        let arr = [0xFF as u8; 5];
+        let arr = [0xFF_u8; 5];
         buf.write_bytes(&arr);
         assert_eq!(arr.len(), buf.len());
 

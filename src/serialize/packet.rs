@@ -1,6 +1,6 @@
 use crate::serialize::buffer::ByteBuf;
 use crate::serialize::protocol::{ProtocolToID, ProtocolVersion};
-use crate::serialize::var::{VarIntReader, VarIntWriter};
+use crate::serialize::var::VarIntWriter;
 
 pub trait PacketSerializer: ProtocolToID {
     fn serialize(&self, buf: &mut ByteBuf, ver: &ProtocolVersion);
@@ -15,7 +15,7 @@ impl<T: PacketSerializer + ProtocolToID> Packet for T {
     fn serialize_with_id(&self, ver: &ProtocolVersion) -> Box<ByteBuf> {
         let mut buf = Box::new(ByteBuf::new());
         buf.write_var_int(self.resolve_id(ver));
-        self.serialize(&mut buf, &ver);
+        self.serialize(&mut buf, ver);
         buf
     }
 }
@@ -53,10 +53,8 @@ pub mod clientbound {
     }
 
     impl ProtocolToID for KeepAlive {
-        fn resolve_id(&self, ver: &ProtocolVersion) -> i32 {
-            match ver {
-                _ => PacketID::KeepAliveCB as i32,
-            }
+        fn resolve_id(&self, _ver: &ProtocolVersion) -> i32 {
+            PacketID::KeepAliveCB as i32
         }
     }
 
@@ -76,10 +74,8 @@ pub mod clientbound {
     }
 
     impl ProtocolToID for SetCompression {
-        fn resolve_id(&self, ver: &ProtocolVersion) -> i32 {
-            match ver {
-                _ => PacketID::SetCompression as i32,
-            }
+        fn resolve_id(&self, _ver: &ProtocolVersion) -> i32 {
+            PacketID::SetCompression as i32
         }
     }
 
@@ -108,7 +104,6 @@ pub mod serverbound {
     #[repr(i32)]
     pub enum LoginState {
         Undefined = 0,
-        Status = 1,
         Login = 2,
     }
 
@@ -137,18 +132,14 @@ pub mod serverbound {
     }
 
     impl ProtocolToID for Handshake {
-        fn resolve_id(&self, ver: &ProtocolVersion) -> i32 {
-            match ver {
-                _ => PacketID::Handshake as i32,
-            }
+        fn resolve_id(&self, _ver: &ProtocolVersion) -> i32 {
+            PacketID::Handshake as i32
         }
     }
 
     impl ProtocolToID for KeepAlive {
-        fn resolve_id(&self, ver: &ProtocolVersion) -> i32 {
-            match ver {
-                _ => PacketID::KeepAliveSB as i32,
-            }
+        fn resolve_id(&self, _ver: &ProtocolVersion) -> i32 {
+            PacketID::KeepAliveSB as i32
         }
     }
 
@@ -179,10 +170,8 @@ pub mod serverbound {
     }
 
     impl ProtocolToID for LoginStart {
-        fn resolve_id(&self, ver: &ProtocolVersion) -> i32 {
-            match ver {
-                _ => 0x00,
-            }
+        fn resolve_id(&self, _ver: &ProtocolVersion) -> i32 {
+            0x00
         }
     }
 
@@ -202,6 +191,7 @@ mod tests {
     use super::PacketID;
     use crate::serialize::packet::serverbound::*;
     use crate::serialize::packet::*;
+    use crate::serialize::var::VarIntReader;
 
     #[test]
     fn valid_handshake_test() {

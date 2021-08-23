@@ -1,21 +1,27 @@
-use crate::serialize::var::{VarIntWriter, VarIntReader, DeserializeError};
 use crate::serialize::buffer::ByteBuf;
+use crate::serialize::var::{DeserializeError, VarIntReader, VarIntWriter};
 
+// TODO: fix this, probably should just be a ToString trait
+// or something we can just convert directly to a string
+// also we can reuse a VarInt prefixed byte array thing here
 pub trait VarIntString: VarIntWriter + VarIntReader {
     fn len(&self) -> usize;
     fn extend_from_slice(&mut self, other: &[u8]);
 }
 
 pub trait WriteString: VarIntString {
-    fn write_string(&mut self, value: &String);
+    fn write_string(&mut self, value: &str);
 }
 
 pub trait ReadString: VarIntString {
     fn read_string(&mut self) -> Result<String, DeserializeError>;
 }
 
-impl<T> WriteString for T where T:VarIntString {
-    fn write_string(&mut self, value: &String) {
+impl<T> WriteString for T
+where
+    T: VarIntString,
+{
+    fn write_string(&mut self, value: &str) {
         self.write_var_int(value.len() as i32);
         self.extend_from_slice(value.as_bytes());
     }
@@ -26,12 +32,12 @@ impl ReadString for ByteBuf {
         match self.read_var_int() {
             Ok(len) => {
                 if len <= 0 {
-                    return Err(DeserializeError::InvalidLength)
+                    return Err(DeserializeError::InvalidLength);
                 }
                 let byte_vec = self.read_bytes(len as usize).unwrap();
                 Ok(String::from_utf8(byte_vec).unwrap())
-            },
-            Err(err) => Err(err)
+            }
+            Err(err) => Err(err),
         }
     }
 }

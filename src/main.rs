@@ -3,7 +3,6 @@ use crate::serialize::packet;
 use crate::serialize::packet::serverbound::*;
 use crate::serialize::protocol::ProtocolVersion;
 
-mod encrypt;
 mod mc;
 
 fn main() {
@@ -17,7 +16,7 @@ fn main() {
     let mut c = mc::Connection::new(
         "localhost:25565".to_string(),
         protocol,
-        mc::ChunkSize::MEDIUM,
+        mc::BufferSize::Medium,
     );
     println!("Sent {} bytes!", c.send_packet(&handshake));
 
@@ -42,8 +41,7 @@ fn main() {
                     println!("Compression threshold is {}!", set_compression.threshold);
                 }
                 packet::PacketID::KeepAliveCB => {
-                    let keep_alive =
-                        packet::deserialize_new::<packet::clientbound::KeepAlive>(buf);
+                    let keep_alive = packet::deserialize_new::<packet::clientbound::KeepAlive>(buf);
                     println!("Got keep alive id {}!", keep_alive.id);
                     let keep_alive_sb = packet::serverbound::KeepAlive { id: keep_alive.id };
                     c.send_packet(&keep_alive_sb);
