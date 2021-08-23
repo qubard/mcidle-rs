@@ -5,7 +5,13 @@ use std::io::{Read, Write};
 #[derive(Clone)]
 pub struct ByteBuf {
     vec: Vec<u8>,
-    pub read_idx: usize,
+    // todo private
+    read_idx: usize,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum SeekError {
+    TooFar,
 }
 
 impl From<&[u8]> for ByteBuf {
@@ -38,6 +44,7 @@ impl ByteBuf {
         self.vec.push(v)
     }
 
+    // is it slower i guess to just call read() with a slice of len 1?
     pub fn read_byte(&mut self) -> Option<u8> {
         unsafe {
             if self.read_idx >= self.len() {
@@ -49,11 +56,17 @@ impl ByteBuf {
             }
         }
     }
-    
-    pub fn end(&self) -> bool {
-        self.read_idx >= self.vec.len()
+
+    // returns true iff buffer has `remaining` bytes available to read
+    pub fn has_readable_bytes(&self, len : usize) -> bool {
+        self.remaining() >= len 
     }
 
+    pub fn remaining(&self) -> usize {
+        self.vec.len() - self.read_idx
+    }
+
+    // TODO: use read trait
     pub fn read_bytes(&mut self, len: usize) -> Option<Vec<u8>> {
         if self.read_idx + len - 1 >= self.len() {
             None
@@ -64,6 +77,23 @@ impl ByteBuf {
             self.read_idx += len;
             Some(dest)
         }
+    }
+
+    pub fn read_idx(&self) -> usize {
+        self.read_idx
+    }
+
+    pub fn seek_absolute(&mut self, idx: usize) -> Result<usize, SeekError> {
+        if idx as usize > self.len() {
+            Err(SeekError::TooFar)
+        } else {
+            self.read_idx = idx as usize;
+            Ok(self.read_idx)
+        }
+    }
+
+    pub fn end(&self) -> bool {
+        self.remaining() == 0
     }
 
     pub fn as_slice(&self) -> &[u8] {
@@ -124,7 +154,7 @@ impl VarIntWriter for ByteBuf {
 }
 
 impl VarIntReader for ByteBuf {
-    fn read_var_int(&mut self) -> Result<i32, DeserializeError> {
+    fn read_var_int(&mut self) -> Result<(i32, i32), DeserializeError> {
         let mut value: i32 = 0;
         let mut offset: i64 = 0;
         let mut current_byte: u8 = 0;
@@ -143,7 +173,7 @@ impl VarIntReader for ByteBuf {
                 None => return Err(DeserializeError::BufferTooSmall),
             }
         }
-        Ok(value)
+        Ok((value, (offset / 7) as i32))
     }
 }
 
@@ -159,20 +189,20 @@ mod tests {
         let mut buf = ByteBuf::new();
         let mut id: i32 = 0x340;
         buf.write_var_int(id);
-        assert_eq!(id, buf.read_var_int().unwrap());
+        assert_eq!(id, buf.read_var_int().unwrap().0);
 
         let mut buf = ByteBuf::new();
         id = 0x344445;
         buf.write_var_int(id);
-        assert_eq!(id, buf.read_var_int().unwrap());
+        assert_eq!(id, buf.read_var_int().unwrap().0);
 
         id = -1;
         buf.write_var_int(id);
-        assert_eq!(id, buf.read_var_int().unwrap());
+        assert_eq!(id, buf.read_var_int().unwrap().0);
 
         id = -2147483648;
         buf.write_var_int(id);
-        assert_eq!(id, buf.read_var_int().unwrap());
+        assert_eq!(id, buf.read_var_int().unwrap().0);
     }
 
     #[test]
@@ -185,7 +215,7 @@ mod tests {
         let res = buf.read_string();
         assert_eq!(true, res.is_ok());
         assert_eq!(s, res.unwrap());
-        assert_eq!(x, buf.read_var_int().unwrap());
+        assert_eq!(x, buf.read_var_int().unwrap().0);
         assert_eq!(9, buf.len());
 
         buf = ByteBuf::new();

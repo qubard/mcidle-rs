@@ -20,7 +20,7 @@ impl<T: PacketSerializer + ProtocolToID + PacketHandler> Packet for T {
     }
 }
 
-fn deserialize_new<T: Default + Packet>(buf: &mut ByteBuf) -> Box<T> {
+pub fn deserialize_new<T: Default + Packet>(buf: &mut ByteBuf) -> Box<T> {
     let mut p: T = T::default();
     p.deserialize(buf);
     Box::new(p)
@@ -30,7 +30,8 @@ pub trait PacketHandler {
     fn handle(&self);
 }
 
-#[derive(PartialEq)]
+#[derive(Copy, Clone, PartialEq)]
+#[repr(i32)]
 pub enum PacketID {
     KeepAliveCB = 0x1F,
     KeepAliveSB = 0x0B,
@@ -38,12 +39,9 @@ pub enum PacketID {
     Handshake = 0x00,
 }
 
-fn deserialize_into_packet(id: i32, buf: &mut ByteBuf) -> Option<Box<dyn Packet>> {
-    match id {
-        // TODO: fix this
-        0x03 => Some(deserialize_new::<clientbound::SetCompression>(buf)),
-        _ => None,
-    }
+pub fn to_packet_id(id: i32) -> PacketID {
+    let packet_id: PacketID = unsafe { ::std::mem::transmute(id) };
+    packet_id
 }
 
 pub mod clientbound {
@@ -102,7 +100,7 @@ pub mod clientbound {
         }
 
         fn deserialize(&mut self, buf: &mut ByteBuf) {
-            self.threshold = buf.read_var_int().unwrap();
+            self.threshold = buf.read_var_int().unwrap().0;
         }
     }
 }
@@ -118,6 +116,7 @@ pub mod serverbound {
     use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 
     #[derive(Debug, Clone, PartialEq)]
+    #[repr(i32)]
     pub enum LoginState {
         Undefined = 0,
         Status = 1,
@@ -189,16 +188,10 @@ pub mod serverbound {
         }
 
         fn deserialize(&mut self, buf: &mut ByteBuf) {
-            self.protocol_version = buf.read_var_int().unwrap();
+            self.protocol_version = buf.read_var_int().unwrap().0;
             self.address = buf.read_string().unwrap();
             self.port = buf.read_u16::<BigEndian>().unwrap();
-            match buf.read_var_int().unwrap() {
-                1 => {
-                    self.next_state = LoginState::Status;
-                }
-                2 => self.next_state = LoginState::Login,
-                _ => self.next_state = LoginState::Undefined,
-            };
+            self.next_state = unsafe { ::std::mem::transmute(buf.read_var_int().unwrap().0) };
         }
     }
 
@@ -243,7 +236,7 @@ mod tests {
         let mut buf = h.serialize_with_id(&ProtocolVersion::V_1_12_2);
         assert_eq!(16, buf.len());
 
-        assert_eq!(PacketID::Handshake as i32, buf.read_var_int().unwrap());
+        assert_eq!(PacketID::Handshake as i32, buf.read_var_int().unwrap().0);
         let h2 = deserialize_new::<Handshake>(&mut buf);
         assert_eq!(h.protocol_version, h2.protocol_version);
         assert_eq!(h.address, h2.address);

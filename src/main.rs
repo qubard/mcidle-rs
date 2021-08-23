@@ -1,11 +1,9 @@
 mod serialize;
+use crate::serialize::packet;
 use crate::serialize::packet::serverbound::*;
 use crate::serialize::protocol::ProtocolVersion;
 
 mod encrypt;
-
-use hex;
-
 mod mc;
 
 fn main() {
@@ -13,10 +11,14 @@ fn main() {
         protocol_version: 340,
         address: "localhost".to_string(),
         port: 25565,
-        next_state: LoginState::Login
+        next_state: LoginState::Login,
     };
     let protocol = ProtocolVersion::V_1_12_2;
-    let mut c = mc::Connection::new("localhost:25565".to_string(), protocol);
+    let mut c = mc::Connection::new(
+        "localhost:25565".to_string(),
+        protocol,
+        mc::ChunkSize::MEDIUM,
+    );
     println!("Sent {} bytes!", c.send_packet(&handshake));
 
     let login_start = LoginStart {
@@ -25,11 +27,25 @@ fn main() {
     println!("Sent {} bytes!", c.send_packet(&login_start));
 
     loop {
-        let pkts = c.read_packets();
-        for (id, _) in &pkts {
-            println!("P: {} id: {}" , pkts.len(), id);
+        let mut pkts = c.read_packets();
+        let len = pkts.len();
+        if len == 0 {
+            break
+        }
+        println!("Read {} packets!", len);
+        for (id, buf) in pkts.iter_mut() {
+            match packet::to_packet_id(*id) {
+                packet::PacketID::SetCompression => {
+                    let set_compression =
+                        packet::deserialize_new::<packet::clientbound::SetCompression>(buf);
+                    c.set_compression_threshold(set_compression.threshold);
+                    println!("Compression threshold is {}!", set_compression.threshold);
+                }
+                _ => {
+                    println!("Unknown packet id {:x}", id);
+                }
+            }
         }
         println!("done read call");
     }
 }
-

@@ -13,22 +13,32 @@ use std::io::{Read, Write};
 
 type RefCrypter = RefCell<Option<Crypter>>;
 
+#[derive(Copy, Clone)]
+#[repr(u32)]
+pub enum ChunkSize {
+    SMALL = 1024,
+    MEDIUM = 4096,
+    LARGE = 8192,
+}
+
 pub struct Connection {
     enc: RefCrypter,
     dec: RefCrypter,
     stream: TcpStream,
     ver: ProtocolVersion,
     compression: Option<i32>, // compression threshold
+    chunk_size: ChunkSize,
 }
 
 impl Connection {
-    pub fn new(addr: String, ver: ProtocolVersion) -> Connection {
+    pub fn new(addr: String, ver: ProtocolVersion, chunk_size: ChunkSize) -> Connection {
         Connection {
             enc: RefCrypter::new(None),
             dec: RefCrypter::new(None),
             stream: TcpStream::connect(addr).unwrap(),
             ver,
             compression: None,
+            chunk_size,
         }
     }
 
@@ -67,57 +77,65 @@ impl Connection {
         self.compression.is_some()
     }
 
+    pub fn set_compression_threshold(&mut self, threshold: i32) {
+        self.compression = Some(threshold);
+    }
+
     pub fn read_packets(&mut self) -> Vec<(i32, ByteBuf)> {
-        let mut slice: &mut [u8] = &mut [0 as u8; 4096];
+        let mut slice = vec![0 as u8; self.chunk_size as usize];
         let mut packets = Vec::new();
         match self.stream.read(&mut slice) {
             Ok(n) => {
                 let mut buf = ByteBuf::from(&slice[..n]);
-                let mut len = buf.read_var_int().unwrap();
 
-                match buf.read_bytes(len as usize) {
-                    Some(vec) => {
-                        if self.compression_enabled() {
-                            // uncompressed length
-                            len = buf.read_var_int().unwrap();
+                while !buf.end() {
+                    let len = buf.read_var_int().unwrap().0; // total packet length
 
-                            let mut out: Vec<u8> = Vec::with_capacity(len as usize);
-
-                            let mut decompressor = flate2::Decompress::new(true);
-                            decompressor
-                                .decompress_vec(
-                                    vec.as_slice(),
-                                    &mut out,
-                                    flate2::FlushDecompress::None,
-                                )
-                                .unwrap();
-
-                            // zlib inflate into another slice, override b
-                        }
-
-                        let mut box_buf = ByteBuf::from(&vec);
-                        let id: i32 = box_buf.read_var_int().unwrap();
-                        packets.push((id, box_buf));
+                    if !buf.has_readable_bytes(len as usize) {
+                        let mut rest = vec![0 as u8; (len as usize) - buf.remaining()];
+                        self.stream.read_exact(rest.as_mut_slice()).unwrap();
+                        buf.write(rest.as_mut_slice()).unwrap();
                     }
-                    None => {
-                        panic!("unexpected none rest");
+
+                    let mut compressed_res : (i32, i32) = (-1,0);
+
+                    // Optionally read a compression value
+                    if self.compression_enabled() {
+                        compressed_res = buf.read_var_int().unwrap();
                     }
+
+                    // Read off everything except the compressed length VarInt (if it's there)
+                    let vec = buf.read_bytes((len - compressed_res.1) as usize).unwrap();
+
+                    // This buffer contains PacketID + Data
+                    let mut tmp_buf = ByteBuf::from(vec.as_slice());
+
+                    if compressed_res.0 > 0 {
+                        let mut out: Vec<u8> = Vec::with_capacity(compressed_res.0 as usize);
+                        let mut decompressor = flate2::Decompress::new(true);
+
+                        // zlib inflate into another slice
+                        decompressor
+                            .decompress_vec(
+                                vec.as_slice(),
+                                &mut out,
+                                flate2::FlushDecompress::None,
+                            )
+                            .unwrap();
+
+                        // Replace the compressed `tmp_buf` with its uncompressed counterpart
+                        tmp_buf = ByteBuf::from(out.as_slice());
+                    }
+
+                    let id: i32 = tmp_buf.read_var_int().unwrap().0;
+                    packets.push((id, tmp_buf));
                 }
 
-                if !buf.end() {
-                    panic!("NOT AT END");
-                }
-
-                println!(
-                    "size: {}, len: {}, data: {}",
-                    n,
-                    len,
-                    hex::encode(&slice[..n])
-                );
+                println!("size: {}, data: {}", n, hex::encode(&slice[..n]));
             }
             Err(e) => panic!(e),
         }
 
-        packets.clone()
+        packets
     }
 }

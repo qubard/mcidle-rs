@@ -11,6 +11,6 @@ pub trait VarIntWriter {
 }
 
 pub trait VarIntReader {
-    fn read_var_int(&mut self) -> Result<i32, DeserializeError>;
+    fn read_var_int(&mut self) -> Result<(i32, i32), DeserializeError>;
 }
 
