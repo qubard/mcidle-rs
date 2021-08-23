@@ -5,7 +5,6 @@ use std::io::{Read, Write};
 #[derive(Clone)]
 pub struct ByteBuf {
     vec: Vec<u8>,
-    // todo private
     read_idx: usize,
 }
 
@@ -170,6 +169,53 @@ mod tests {
     use crate::serialize::bytes::*;
     use crate::serialize::string::*;
     use crate::serialize::var::*;
+
+    #[test]
+    fn valid_varint_length() {
+        let mut buf = ByteBuf::new();
+        let mut id: i32 = 0x340;
+        buf.write_var_int(id);
+        assert_eq!(buf.read_var_int().unwrap().1, len_varint(id));
+
+        let mut buf = ByteBuf::new();
+        id = 0x344445;
+        buf.write_var_int(id);
+        assert_eq!(buf.read_var_int().unwrap().1, len_varint(id));
+
+        id = -1;
+        buf.write_var_int(id);
+        assert_eq!(buf.read_var_int().unwrap().1, len_varint(id));
+
+        id = -2147483648;
+        buf.write_var_int(id);
+        assert_eq!(buf.read_var_int().unwrap().1, len_varint(id));
+
+        id = -0xFF;
+        buf.write_var_int(id);
+        assert_eq!(buf.read_var_int().unwrap().1, len_varint(id));
+
+        id = -0xFFF;
+        buf.write_var_int(id);
+        assert_eq!(buf.read_var_int().unwrap().1, len_varint(id));
+
+
+        id = 0xFFF;
+        buf.write_var_int(id);
+        assert_eq!(buf.read_var_int().unwrap().1, len_varint(id));
+
+        id = 0xFFFE;
+        buf.write_var_int(id);
+        assert_eq!(buf.read_var_int().unwrap().1, len_varint(id));
+
+        id = 0xEEEEE;
+        buf.write_var_int(id);
+        assert_eq!(buf.read_var_int().unwrap().1, len_varint(id));
+
+        id = 0xEEEEED;
+        buf.write_var_int(id);
+        assert_eq!(buf.read_var_int().unwrap().1, len_varint(id));
+    }
+
 
     #[test]
     fn valid_varint_serialization() {

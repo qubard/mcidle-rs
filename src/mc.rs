@@ -59,7 +59,11 @@ impl Connection {
         let mut total_len = buf.len() as i32;
         if self.compression_enabled() {
             total_len += 1;
+            // write a 0 if compression isnt enabled for the packet
+            // or the uncompressed value 
+            final_buf.write_var_int(0);
         }
+
         final_buf.write_var_int(total_len);
         if self.compression_enabled() {
             final_buf.write_var_int(0);
