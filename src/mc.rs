@@ -41,7 +41,7 @@ impl Connection {
     pub fn send_packet(&mut self, packet: &impl Packet) -> usize {
         // Write and prepend packet buffer with its length
         let mut buf = packet.serialize_with_id(&self.ver);
-        
+
         let mut final_buf = ByteBuf::new();
         let mut total_len = 0;
         let mut uncompressed_len = 0;
@@ -52,10 +52,11 @@ impl Connection {
                 uncompressed_len = buf.len() as i32;
                 let mut out = vec![0_u8];
                 let mut compressor = flate2::Compress::new(flate2::Compression::fast(), true);
-                let _ = compressor.compress_vec(buf.as_slice(), &mut out, flate2::FlushCompress::None);
+                let _ =
+                    compressor.compress_vec(buf.as_slice(), &mut out, flate2::FlushCompress::None);
                 *buf = ByteBuf::from(out.as_slice());
             }
-            total_len += len_varint(uncompressed_len); 
+            total_len += len_varint(uncompressed_len);
         }
 
         total_len += buf.len() as i32;

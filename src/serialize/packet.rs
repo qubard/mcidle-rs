@@ -1,6 +1,6 @@
 use crate::serialize::buffer::ByteBuf;
 use crate::serialize::protocol::{ProtocolToID, ProtocolVersion};
-use crate::serialize::var::{VarIntWriter};
+use crate::serialize::var::VarIntWriter;
 
 pub trait PacketSerializer: ProtocolToID {
     fn serialize(&self, buf: &mut ByteBuf, ver: &ProtocolVersion);

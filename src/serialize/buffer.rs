@@ -52,8 +52,8 @@ impl ByteBuf {
     }
 
     // returns true iff buffer has `remaining` bytes available to read
-    pub fn has_readable_bytes(&self, len : usize) -> bool {
-        self.remaining() >= len 
+    pub fn has_readable_bytes(&self, len: usize) -> bool {
+        self.remaining() >= len
     }
 
     pub fn remaining(&self) -> usize {
@@ -196,7 +196,7 @@ mod tests {
         let mut i = 0;
         while i < 31 {
             buf = ByteBuf::new();
-            id = (1<<i)-1;
+            id = (1 << i) - 1;
             buf.write_var_int(id);
             assert_eq!(id, buf.read_var_int().unwrap());
             i += 1;
