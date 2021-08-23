@@ -214,6 +214,20 @@ mod tests {
         id = 0xEEEEED;
         buf.write_var_int(id);
         assert_eq!(buf.read_var_int().unwrap().1, len_varint(id));
+
+        id = 2147483647;
+        buf.write_var_int(id);
+        assert_eq!(buf.read_var_int().unwrap().1, len_varint(id));
+
+        let mut i = 0;
+        while i < 31 {
+            buf = ByteBuf::new();
+            id = (1<<i)-1;
+            println!("{}", id);
+            buf.write_var_int(id);
+            assert_eq!(buf.read_var_int().unwrap().1, len_varint(id));
+            i += 1;
+        }
     }
 
 
@@ -236,6 +250,23 @@ mod tests {
         id = -2147483648;
         buf.write_var_int(id);
         assert_eq!(id, buf.read_var_int().unwrap().0);
+
+        id = -1;
+        buf.write_var_int(id);
+        assert_eq!(id, buf.read_var_int().unwrap().0);
+
+        id = 0;
+        buf.write_var_int(id);
+        assert_eq!(id, buf.read_var_int().unwrap().0);
+
+        let mut i = 0;
+        while i < 31 {
+            buf = ByteBuf::new();
+            id = (1<<i)-1;
+            buf.write_var_int(id);
+            assert_eq!(id, buf.read_var_int().unwrap().0);
+            i += 1;
+        }
     }
 
     #[test]
