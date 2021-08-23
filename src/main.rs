@@ -30,7 +30,7 @@ fn main() {
         let mut pkts = c.read_packets();
         let len = pkts.len();
         if len == 0 {
-            break
+            break;
         }
         println!("Read {} packets!", len);
         for (id, buf) in pkts.iter_mut() {
@@ -40,6 +40,13 @@ fn main() {
                         packet::deserialize_new::<packet::clientbound::SetCompression>(buf);
                     c.set_compression_threshold(set_compression.threshold);
                     println!("Compression threshold is {}!", set_compression.threshold);
+                }
+                packet::PacketID::KeepAliveCB => {
+                    let keep_alive =
+                        packet::deserialize_new::<packet::clientbound::KeepAlive>(buf);
+                    println!("Got keep alive id {}!", keep_alive.id);
+                    let keep_alive_sb = packet::serverbound::KeepAlive { id: keep_alive.id };
+                    c.send_packet(&keep_alive_sb);
                 }
                 _ => {
                     println!("Unknown packet id {:x}", id);

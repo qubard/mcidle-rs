@@ -7,11 +7,11 @@ pub trait PacketSerializer: ProtocolToID {
     fn deserialize(&mut self, buf: &mut ByteBuf);
 }
 
-pub trait Packet: PacketSerializer + ProtocolToID + PacketHandler {
+pub trait Packet: PacketSerializer + ProtocolToID {
     fn serialize_with_id(&self, ver: &ProtocolVersion) -> Box<ByteBuf>;
 }
 
-impl<T: PacketSerializer + ProtocolToID + PacketHandler> Packet for T {
+impl<T: PacketSerializer + ProtocolToID> Packet for T {
     fn serialize_with_id(&self, ver: &ProtocolVersion) -> Box<ByteBuf> {
         let mut buf = Box::new(ByteBuf::new());
         buf.write_var_int(self.resolve_id(ver));
@@ -24,10 +24,6 @@ pub fn deserialize_new<T: Default + Packet>(buf: &mut ByteBuf) -> Box<T> {
     let mut p: T = T::default();
     p.deserialize(buf);
     Box::new(p)
-}
-
-pub trait PacketHandler {
-    fn handle(&self);
 }
 
 #[derive(Copy, Clone, PartialEq)]
@@ -45,13 +41,12 @@ pub fn to_packet_id(id: i32) -> PacketID {
 }
 
 pub mod clientbound {
-    use super::{PacketHandler, PacketID, PacketSerializer};
+    use super::{PacketID, PacketSerializer};
     use crate::serialize::buffer::ByteBuf;
     use crate::serialize::protocol::{ProtocolToID, ProtocolVersion};
     use crate::serialize::var::*;
     use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 
-    // TODO: custom derive PacketHandler
     #[derive(Debug, Default)]
     pub struct KeepAlive {
         pub id: i64,
@@ -80,12 +75,6 @@ pub mod clientbound {
         pub threshold: i32,
     }
 
-    impl PacketHandler for SetCompression {
-        fn handle(&self) {
-            println!("my threshold is : {}", self.threshold);
-        }
-    }
-
     impl ProtocolToID for SetCompression {
         fn resolve_id(&self, ver: &ProtocolVersion) -> i32 {
             match ver {
@@ -106,7 +95,7 @@ pub mod clientbound {
 }
 
 pub mod serverbound {
-    use super::{PacketHandler, PacketID, PacketSerializer};
+    use super::{PacketID, PacketSerializer};
 
     use crate::serialize::buffer::*;
     use crate::serialize::protocol::{ProtocolToID, ProtocolVersion};
@@ -155,12 +144,6 @@ pub mod serverbound {
         }
     }
 
-    impl PacketHandler for Handshake {
-        fn handle(&self) {
-            println!("Handled handshake");
-        }
-    }
-
     impl ProtocolToID for KeepAlive {
         fn resolve_id(&self, ver: &ProtocolVersion) -> i32 {
             match ver {
@@ -201,10 +184,6 @@ pub mod serverbound {
                 _ => 0x00,
             }
         }
-    }
-
-    impl PacketHandler for LoginStart {
-        fn handle(&self) {}
     }
 
     impl PacketSerializer for LoginStart {

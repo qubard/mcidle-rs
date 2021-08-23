@@ -56,7 +56,15 @@ impl Connection {
         // Write and prepend packet buffer with its length
         let buf = packet.serialize_with_id(&self.ver);
         let mut final_buf = ByteBuf::new();
-        final_buf.write_var_int(buf.len() as i32);
+        let mut total_len = buf.len() as i32;
+        if self.compression_enabled() {
+            total_len += 1;
+        }
+        final_buf.write_var_int(total_len);
+        if self.compression_enabled() {
+            final_buf.write_var_int(0);
+        }
+
         final_buf.write(buf.as_slice()).unwrap();
 
         self.send_buffer(&final_buf)
