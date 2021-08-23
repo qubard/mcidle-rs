@@ -68,7 +68,7 @@ impl Connection {
         if self.compression_enabled() {
             final_buf.write_var_int(uncompressed_len);
         }
-        final_buf.write(buf.as_slice()).unwrap();
+        final_buf.write_all(buf.as_slice()).unwrap();
 
         self.send_buffer(&final_buf)
     }
@@ -138,7 +138,7 @@ impl Connection {
                     if !buf.has_readable_bytes(len as usize) {
                         let mut rest = vec![0 as u8; (len as usize) - buf.remaining()];
                         self.stream.read_exact(rest.as_mut_slice()).unwrap();
-                        buf.write(rest.as_mut_slice()).unwrap();
+                        buf.write_all(rest.as_mut_slice()).unwrap();
                     }
 
                     packets.push(self.read_packet(len, &mut buf));
