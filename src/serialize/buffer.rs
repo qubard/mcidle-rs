@@ -79,19 +79,6 @@ impl ByteBuf {
         }
     }
 
-    pub fn read_idx(&self) -> usize {
-        self.read_idx
-    }
-
-    pub fn seek_absolute(&mut self, idx: usize) -> Result<usize, SeekError> {
-        if idx as usize > self.len() {
-            Err(SeekError::TooFar)
-        } else {
-            self.read_idx = idx as usize;
-            Ok(self.read_idx)
-        }
-    }
-
     pub fn end(&self) -> bool {
         self.remaining() == 0
     }
