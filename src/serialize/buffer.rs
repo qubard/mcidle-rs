@@ -43,7 +43,7 @@ impl ByteBuf {
         self.vec.push(v)
     }
 
-    // is it slower i guess to just call read() with a slice of len 1?
+    // TODO: read trait?
     pub fn read_byte(&mut self) -> Option<u8> {
         unsafe {
             if self.read_idx >= self.len() {
@@ -65,7 +65,7 @@ impl ByteBuf {
         self.vec.len() - self.read_idx
     }
 
-    // TODO: use read trait
+    // TODO: read trait?
     pub fn read_bytes(&mut self, len: usize) -> Option<Vec<u8>> {
         if self.read_idx + len - 1 >= self.len() {
             None
