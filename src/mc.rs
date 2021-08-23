@@ -42,16 +42,6 @@ impl Connection {
         }
     }
 
-    /*pub fn init_cryptor(&mut self, iv: &[u8]) {
-        // Note that the iv is the same as the key in Minecraft
-        self.enc = RefCell::new(Some(Crypter::new(Cipher::aes_128_cbc(), Mode::Encrypt, iv, Some(iv)).unwrap()));
-        self.dec = RefCell::new(Some(Crypter::new(Cipher::aes_128_cbc(), Mode::Decrypt, iv, Some(iv)).unwrap()));
-    }*/
-
-    /*pub fn read(&mut self, buf: &mut [u8]) -> usize {
-        self.stream.read(buf).unwrap()
-    }*/
-
     pub fn send_packet(&mut self, packet: &impl Packet) -> usize {
         // Write and prepend packet buffer with its length
         let mut buf = packet.serialize_with_id(&self.ver);
