@@ -7,7 +7,7 @@ pub trait VarIntString: VarIntWriter + VarIntReader {
 }
 
 pub trait WriteString: VarIntString {
-    fn write_string(&mut self, value: &String);
+    fn write_string(&mut self, value: &str);
 }
 
 pub trait ReadString: VarIntString {
@@ -15,7 +15,7 @@ pub trait ReadString: VarIntString {
 }
 
 impl<T> WriteString for T where T:VarIntString {
-    fn write_string(&mut self, value: &String) {
+    fn write_string(&mut self, value: &str) {
         self.write_var_int(value.len() as i32);
         self.extend_from_slice(value.as_bytes());
     }

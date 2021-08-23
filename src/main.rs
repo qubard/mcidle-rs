@@ -17,7 +17,7 @@ fn main() {
     let mut c = mc::Connection::new(
         "localhost:25565".to_string(),
         protocol,
-        mc::ChunkSize::MEDIUM,
+        mc::BufferSize::Medium,
     );
     println!("Sent {} bytes!", c.send_packet(&handshake));
 
