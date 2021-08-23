@@ -1,4 +1,4 @@
-name: Rust
+name: build
 
 on:
   push:
@@ -6,17 +6,68 @@ on:
   pull_request:
     branches: [ main ]
 
-env:
-  CARGO_TERM_COLOR: always
-
 jobs:
   build:
-
-    runs-on: ubuntu-latest
+    name: "Build and Test"
+    strategy:
+      matrix:
+        os: [ ubuntu-18.04, windows-2019, macos-10.15 ]
+    runs-on: ${{ matrix.os }}
 
     steps:
     - uses: actions/checkout@v2
-    - name: Build
-      run: cargo build --verbose
+
+    # Caching
+
+    # Work around https://github.com/actions/cache/issues/403 by using GNU tar
+    # instead of BSD tar.
+    - name: Install GNU tar
+      if: matrix.os == 'macos-10.15'
+      run: |
+        brew install gnu-tar
+        echo PATH="/usr/local/opt/gnu-tar/libexec/gnubin:$PATH" >> $GITHUB_ENV
+
+    - name: Cache cargo registry
+      uses: actions/cache@v2
+      with:
+        path: ~/.cargo/registry
+        key: ${{ runner.os }}-cargo-registry2-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-registry2-
+    - name: Cache cargo index
+      uses: actions/cache@v2
+      with:
+        path: ~/.cargo/git
+        key: ${{ runner.os }}-cargo-index2-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-index2-
+    - name: Cache cargo build
+      uses: actions/cache@v2
+      with:
+        path: target
+        key: ${{ runner.os }}-cargo-build-target2-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-build-target2-
+
+    - name: Install rustfmt
+      run: rustup component add rustfmt
+      
     - name: Run tests
-      run: cargo test --verbose
+      run: cargo test
+      env:
+        RUSTFLAGS: "-C opt-level=0"
+
+    - name: Install Clippy
+      run: rustup component add clippy
+    
+    - name: Run Clippy
+      run: cargo clippy --all-targets -- -D warnings
+      env:
+        RUSTFLAGS: "-C opt-level=0"
+    
+    - name: Check formatting
+      run: cargo fmt -- --check
+    - uses: actions/upload-artifact@v2
+      with:
+        name: Build
+        path: target/release/mcidle-rs*
