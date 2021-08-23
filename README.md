@@ -34,7 +34,8 @@ Not yet.
 - [x] Coverage support
 - [ ] Multiple protocols (codec?)
 - [ ] Refactoring libs into crates
-- [ ] Continuous integration
+- [x] Basic CI
+- [ ] Better CI
 - [ ] Better error handling
 
 Lots more I'm probably missing.
