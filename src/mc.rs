@@ -89,6 +89,37 @@ impl Connection {
         self.compression = Some(threshold);
     }
 
+    fn read_packet(&self, len: i32, buf: &mut ByteBuf) -> (i32, ByteBuf) {
+        let mut compressed_res: (i32, i32) = (-1, 0);
+
+        // Optionally read a compression value
+        if self.compression_enabled() {
+            compressed_res = buf.read_var_int().unwrap();
+        }
+
+        // Read off everything except the compressed length VarInt (if it's there)
+        let vec = buf.read_bytes((len - compressed_res.1) as usize).unwrap();
+
+        // This buffer contains PacketID + Data
+        let mut tmp_buf = ByteBuf::from(vec.as_slice());
+
+        if compressed_res.0 > 0 {
+            let mut out: Vec<u8> = Vec::with_capacity(compressed_res.0 as usize);
+            let mut decompressor = flate2::Decompress::new(true);
+
+            // zlib inflate into another slice
+            decompressor
+                .decompress_vec(vec.as_slice(), &mut out, flate2::FlushDecompress::None)
+                .unwrap();
+
+            // Replace the compressed `tmp_buf` with its uncompressed counterpart
+            tmp_buf = ByteBuf::from(out.as_slice());
+        }
+
+        let id: i32 = tmp_buf.read_var_int().unwrap().0;
+        (id, tmp_buf)
+    }
+
     pub fn read_packets(&mut self) -> Vec<(i32, ByteBuf)> {
         let mut slice = vec![0 as u8; self.chunk_size as usize];
         let mut packets = Vec::new();
@@ -105,45 +136,13 @@ impl Connection {
                         buf.write(rest.as_mut_slice()).unwrap();
                     }
 
-                    let mut compressed_res : (i32, i32) = (-1,0);
-
-                    // Optionally read a compression value
-                    if self.compression_enabled() {
-                        compressed_res = buf.read_var_int().unwrap();
-                    }
-
-                    // Read off everything except the compressed length VarInt (if it's there)
-                    let vec = buf.read_bytes((len - compressed_res.1) as usize).unwrap();
-
-                    // This buffer contains PacketID + Data
-                    let mut tmp_buf = ByteBuf::from(vec.as_slice());
-
-                    if compressed_res.0 > 0 {
-                        let mut out: Vec<u8> = Vec::with_capacity(compressed_res.0 as usize);
-                        let mut decompressor = flate2::Decompress::new(true);
-
-                        // zlib inflate into another slice
-                        decompressor
-                            .decompress_vec(
-                                vec.as_slice(),
-                                &mut out,
-                                flate2::FlushDecompress::None,
-                            )
-                            .unwrap();
-
-                        // Replace the compressed `tmp_buf` with its uncompressed counterpart
-                        tmp_buf = ByteBuf::from(out.as_slice());
-                    }
-
-                    let id: i32 = tmp_buf.read_var_int().unwrap().0;
-                    packets.push((id, tmp_buf));
+                    packets.push(self.read_packet(len, &mut buf));
                 }
 
                 println!("size: {}, data: {}", n, hex::encode(&slice[..n]));
             }
             Err(e) => panic!(e),
         }
-
         packets
     }
 }
