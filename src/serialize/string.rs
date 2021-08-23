@@ -1,6 +1,9 @@
 use crate::serialize::buffer::ByteBuf;
 use crate::serialize::var::{DeserializeError, VarIntReader, VarIntWriter};
 
+// TODO: fix this, probably should just be a ToString trait
+// or something we can just convert directly to a string
+// also we can reuse a VarInt prefixed byte array thing here
 pub trait VarIntString: VarIntWriter + VarIntReader {
     fn len(&self) -> usize;
     fn extend_from_slice(&mut self, other: &[u8]);
