@@ -1,6 +1,6 @@
-# mcidle-rs 🦀
+# mcidle-rs
 
-Yet another port of mcidle, but this time to [Rust](https://www.rust-lang.org/).
+Yet another port of mcidle ✨, but this time to [Rust](https://www.rust-lang.org/).
 
 ### Supported Minecraft versions
 | Version        | Protocol     |
@@ -34,7 +34,8 @@ Not yet.
 - [x] Coverage support
 - [ ] Multiple protocols (codec?)
 - [ ] Refactoring libs into crates
-- [ ] Continuous integration
+- [x] Basic CI
+- [ ] Better CI
 - [ ] Better error handling
 
 Lots more I'm probably missing.
