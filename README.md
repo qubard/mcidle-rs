@@ -16,5 +16,6 @@ Currently a work in progress.
 - [x] Coverage support
 - [ ] Multiple protocols (codec?)
 - [ ] Refactoring libs into crates
+- [ ] Continuous integration
 
 Lots more I'm probably missing.
