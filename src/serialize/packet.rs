@@ -89,7 +89,7 @@ pub mod clientbound {
         }
 
         fn deserialize(&mut self, buf: &mut ByteBuf) {
-            self.threshold = buf.read_var_int().unwrap().0;
+            self.threshold = buf.read_var_int().unwrap();
         }
     }
 }
@@ -171,10 +171,10 @@ pub mod serverbound {
         }
 
         fn deserialize(&mut self, buf: &mut ByteBuf) {
-            self.protocol_version = buf.read_var_int().unwrap().0;
+            self.protocol_version = buf.read_var_int().unwrap();
             self.address = buf.read_string().unwrap();
             self.port = buf.read_u16::<BigEndian>().unwrap();
-            self.next_state = unsafe { ::std::mem::transmute(buf.read_var_int().unwrap().0) };
+            self.next_state = unsafe { ::std::mem::transmute(buf.read_var_int().unwrap()) };
         }
     }
 
@@ -215,7 +215,7 @@ mod tests {
         let mut buf = h.serialize_with_id(&ProtocolVersion::V_1_12_2);
         assert_eq!(16, buf.len());
 
-        assert_eq!(PacketID::Handshake as i32, buf.read_var_int().unwrap().0);
+        assert_eq!(PacketID::Handshake as i32, buf.read_var_int().unwrap());
         let h2 = deserialize_new::<Handshake>(&mut buf);
         assert_eq!(h.protocol_version, h2.protocol_version);
         assert_eq!(h.address, h2.address);

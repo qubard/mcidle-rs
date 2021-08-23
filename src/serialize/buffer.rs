@@ -140,7 +140,7 @@ impl VarIntWriter for ByteBuf {
 }
 
 impl VarIntReader for ByteBuf {
-    fn read_var_int(&mut self) -> Result<(i32, i32), DeserializeError> {
+    fn read_var_int(&mut self) -> Result<i32, DeserializeError> {
         let mut value: i32 = 0;
         let mut offset: i64 = 0;
         let mut current_byte: u8 = 0;
@@ -159,7 +159,7 @@ impl VarIntReader for ByteBuf {
                 None => return Err(DeserializeError::BufferTooSmall),
             }
         }
-        Ok((value, (offset / 7) as i32))
+        Ok(value)
     }
 }
 
@@ -171,100 +171,39 @@ mod tests {
     use crate::serialize::var::*;
 
     #[test]
-    fn valid_varint_length() {
-        let mut buf = ByteBuf::new();
-        let mut id: i32 = 0x340;
-        buf.write_var_int(id);
-        assert_eq!(buf.read_var_int().unwrap().1, len_varint(id));
-
-        let mut buf = ByteBuf::new();
-        id = 0x344445;
-        buf.write_var_int(id);
-        assert_eq!(buf.read_var_int().unwrap().1, len_varint(id));
-
-        id = -1;
-        buf.write_var_int(id);
-        assert_eq!(buf.read_var_int().unwrap().1, len_varint(id));
-
-        id = -2147483648;
-        buf.write_var_int(id);
-        assert_eq!(buf.read_var_int().unwrap().1, len_varint(id));
-
-        id = -0xFF;
-        buf.write_var_int(id);
-        assert_eq!(buf.read_var_int().unwrap().1, len_varint(id));
-
-        id = -0xFFF;
-        buf.write_var_int(id);
-        assert_eq!(buf.read_var_int().unwrap().1, len_varint(id));
-
-
-        id = 0xFFF;
-        buf.write_var_int(id);
-        assert_eq!(buf.read_var_int().unwrap().1, len_varint(id));
-
-        id = 0xFFFE;
-        buf.write_var_int(id);
-        assert_eq!(buf.read_var_int().unwrap().1, len_varint(id));
-
-        id = 0xEEEEE;
-        buf.write_var_int(id);
-        assert_eq!(buf.read_var_int().unwrap().1, len_varint(id));
-
-        id = 0xEEEEED;
-        buf.write_var_int(id);
-        assert_eq!(buf.read_var_int().unwrap().1, len_varint(id));
-
-        id = 2147483647;
-        buf.write_var_int(id);
-        assert_eq!(buf.read_var_int().unwrap().1, len_varint(id));
-
-        let mut i = 0;
-        while i < 31 {
-            buf = ByteBuf::new();
-            id = (1<<i)-1;
-            println!("{}", id);
-            buf.write_var_int(id);
-            assert_eq!(buf.read_var_int().unwrap().1, len_varint(id));
-            i += 1;
-        }
-    }
-
-
-    #[test]
     fn valid_varint_serialization() {
         let mut buf = ByteBuf::new();
         let mut id: i32 = 0x340;
         buf.write_var_int(id);
-        assert_eq!(id, buf.read_var_int().unwrap().0);
+        assert_eq!(id, buf.read_var_int().unwrap());
 
         let mut buf = ByteBuf::new();
         id = 0x344445;
         buf.write_var_int(id);
-        assert_eq!(id, buf.read_var_int().unwrap().0);
+        assert_eq!(id, buf.read_var_int().unwrap());
 
         id = -1;
         buf.write_var_int(id);
-        assert_eq!(id, buf.read_var_int().unwrap().0);
+        assert_eq!(id, buf.read_var_int().unwrap());
 
         id = -2147483648;
         buf.write_var_int(id);
-        assert_eq!(id, buf.read_var_int().unwrap().0);
+        assert_eq!(id, buf.read_var_int().unwrap());
 
         id = -1;
         buf.write_var_int(id);
-        assert_eq!(id, buf.read_var_int().unwrap().0);
+        assert_eq!(id, buf.read_var_int().unwrap());
 
         id = 0;
         buf.write_var_int(id);
-        assert_eq!(id, buf.read_var_int().unwrap().0);
+        assert_eq!(id, buf.read_var_int().unwrap());
 
         let mut i = 0;
         while i < 31 {
             buf = ByteBuf::new();
             id = (1<<i)-1;
             buf.write_var_int(id);
-            assert_eq!(id, buf.read_var_int().unwrap().0);
+            assert_eq!(id, buf.read_var_int().unwrap());
             i += 1;
         }
     }
@@ -279,7 +218,7 @@ mod tests {
         let res = buf.read_string();
         assert_eq!(true, res.is_ok());
         assert_eq!(s, res.unwrap());
-        assert_eq!(x, buf.read_var_int().unwrap().0);
+        assert_eq!(x, buf.read_var_int().unwrap());
         assert_eq!(9, buf.len());
 
         buf = ByteBuf::new();

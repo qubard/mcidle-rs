@@ -25,10 +25,10 @@ impl ReadString for ByteBuf {
     fn read_string(&mut self) -> Result<String, DeserializeError> {
         match self.read_var_int() {
             Ok(len) => {
-                if len.0 <= 0 {
+                if len <= 0 {
                     return Err(DeserializeError::InvalidLength)
                 }
-                let byte_vec = self.read_bytes(len.0 as usize).unwrap();
+                let byte_vec = self.read_bytes(len as usize).unwrap();
                 Ok(String::from_utf8(byte_vec).unwrap())
             },
             Err(err) => Err(err)

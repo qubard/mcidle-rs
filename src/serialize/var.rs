@@ -11,11 +11,20 @@ pub trait VarIntWriter {
 }
 
 pub trait VarIntReader {
-    fn read_var_int(&mut self) -> Result<(i32, i32), DeserializeError>;
+    fn read_var_int(&mut self) -> Result<i32, DeserializeError>;
 }
 
 pub fn len_varint(v: i32) -> i32 {
-    let f = (v as u32) as f64;
-    (f.log(128_f64)+1_f64) as i32
-}
+    let mut len = 0;
+    let mut value = v;
 
+    if v == 0 {
+        return 1;
+    }
+
+    while value != 0 {
+        value = ((value as u32) >> 7) as i32;
+        len += 1;
+    }
+    len
+}

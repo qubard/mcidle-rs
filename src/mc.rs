@@ -54,21 +54,30 @@ impl Connection {
 
     pub fn send_packet(&mut self, packet: &impl Packet) -> usize {
         // Write and prepend packet buffer with its length
-        let buf = packet.serialize_with_id(&self.ver);
+        let mut buf = packet.serialize_with_id(&self.ver);
+        
         let mut final_buf = ByteBuf::new();
-        let mut total_len = buf.len() as i32;
+        let mut total_len = 0;
+        let mut uncompressed_len = 0;
+
         if self.compression_enabled() {
-            total_len += 1;
-            // write a 0 if compression isnt enabled for the packet
-            // or the uncompressed value 
-            final_buf.write_var_int(0);
+            // Compress the buffer and move it
+            if buf.len() >= self.compression.unwrap() as usize {
+                uncompressed_len = buf.len() as i32;
+                let mut out = vec![0 as u8];
+                let mut compressor = flate2::Compress::new(flate2::Compression::fast(), true);
+                &compressor.compress_vec(buf.as_slice(), &mut out, flate2::FlushCompress::None);
+                *buf = ByteBuf::from(out.as_slice());
+            }
+            total_len += len_varint(uncompressed_len); 
         }
+
+        total_len += buf.len() as i32;
 
         final_buf.write_var_int(total_len);
         if self.compression_enabled() {
-            final_buf.write_var_int(0);
+            final_buf.write_var_int(uncompressed_len);
         }
-
         final_buf.write(buf.as_slice()).unwrap();
 
         self.send_buffer(&final_buf)
@@ -94,21 +103,23 @@ impl Connection {
     }
 
     fn read_packet(&self, len: i32, buf: &mut ByteBuf) -> (i32, ByteBuf) {
-        let mut compressed_res: (i32, i32) = (-1, 0);
+        let mut compressed_len = 0;
+        let mut compressed_len_len = 0;
 
         // Optionally read a compression value
         if self.compression_enabled() {
-            compressed_res = buf.read_var_int().unwrap();
+            compressed_len = buf.read_var_int().unwrap();
+            compressed_len_len = len_varint(compressed_len);
         }
 
         // Read off everything except the compressed length VarInt (if it's there)
-        let vec = buf.read_bytes((len - compressed_res.1) as usize).unwrap();
+        let vec = buf.read_bytes((len - compressed_len_len) as usize).unwrap();
 
         // This buffer contains PacketID + Data
         let mut tmp_buf = ByteBuf::from(vec.as_slice());
 
-        if compressed_res.0 > 0 {
-            let mut out: Vec<u8> = Vec::with_capacity(compressed_res.0 as usize);
+        if compressed_len > 0 {
+            let mut out = vec![0 as u8; compressed_len as usize];
             let mut decompressor = flate2::Decompress::new(true);
 
             // zlib inflate into another slice
@@ -120,7 +131,7 @@ impl Connection {
             tmp_buf = ByteBuf::from(out.as_slice());
         }
 
-        let id: i32 = tmp_buf.read_var_int().unwrap().0;
+        let id: i32 = tmp_buf.read_var_int().unwrap();
         (id, tmp_buf)
     }
 
@@ -132,7 +143,7 @@ impl Connection {
                 let mut buf = ByteBuf::from(&slice[..n]);
 
                 while !buf.end() {
-                    let len = buf.read_var_int().unwrap().0; // total packet length
+                    let len = buf.read_var_int().unwrap(); // total packet length
 
                     if !buf.has_readable_bytes(len as usize) {
                         let mut rest = vec![0 as u8; (len as usize) - buf.remaining()];
