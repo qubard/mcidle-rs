@@ -4,7 +4,7 @@ A port of mcidle to [Rust](https://www.rust-lang.org/).
 
 Currently a work in progress.
 
-# action items
+# To-do
 
 - [ ] Mojang Auth
 - [ ] Encryption
