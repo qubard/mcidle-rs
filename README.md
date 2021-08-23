@@ -37,5 +37,6 @@ Not yet.
 - [x] Basic CI
 - [ ] Better CI
 - [ ] Better error handling
+- [ ] Integration tests
 
 Lots more I'm probably missing.
