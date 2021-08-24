@@ -10,8 +10,7 @@ pub struct ByteBuf {
 
 impl From<&[u8]> for ByteBuf {
     fn from(slice: &[u8]) -> Self {
-        let mut v = Vec::new();
-        v.resize(slice.len(), 0_u8);
+        let mut v = vec![0_u8; slice.len()];
         v.copy_from_slice(slice);
         ByteBuf {
             vec: v,
