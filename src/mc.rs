@@ -125,9 +125,11 @@ impl Connection {
                     packets.push(self.read_packet(len, &mut buf));
                 }
 
-                println!("size: {}, data: {}", n, hex::encode(&slice[..n]));
+                log::debug!("size: {}, data: {}", n, hex::encode(&slice[..n]));
             }
-            Err(e) => std::panic::panic_any(e),
+            Err(e) => {
+                panic!(e)
+            }
         }
         packets
     }

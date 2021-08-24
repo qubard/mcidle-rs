@@ -7,3 +7,7 @@ edition = "2018"
 byteorder = "1.4.3"
 hex = "0.4.3"
 flate2 = { version = "1.0.20", features = ["zlib-ng-compat"], default-features = false }
+log = "0.4"
+fern = "0.5"
+colored = "2.0.0"
+chrono = "0.4.19"
