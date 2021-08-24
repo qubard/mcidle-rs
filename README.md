@@ -1,4 +1,5 @@
 # mcidle-rs
+[![build](https://github.com/qubard/mcidle-rs/actions/workflows/rust.yml/badge.svg?branch=main)](https://github.com/qubard/mcidle-rs/actions/workflows/rust.yml)
 
 Yet another port of mcidle ✨, but this time to [Rust](https://www.rust-lang.org/).
 
