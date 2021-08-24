@@ -1,11 +1,11 @@
-mod serialize;
-use crate::serialize::keep_alive::*;
 use crate::serialize::packet;
+use crate::serialize::packet::keep_alive::*;
 use crate::serialize::packet::serverbound::*;
 use crate::serialize::protocol::ProtocolVersion;
 
 mod logging;
 mod mc;
+mod serialize;
 
 fn main() {
     logging::init(log::LevelFilter::Debug);
