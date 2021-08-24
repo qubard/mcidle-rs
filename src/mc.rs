@@ -90,46 +90,52 @@ impl Connection {
         let mut tmp_buf = ByteBuf::from(vec.as_slice());
 
         if compressed_len > 0 {
-            let mut out = vec![0_u8; compressed_len as usize];
+            let mut out = Vec::with_capacity(compressed_len as usize);
             let mut decompressor = flate2::Decompress::new(true);
 
             // zlib inflate into another slice
             decompressor
-                .decompress_vec(vec.as_slice(), &mut out, flate2::FlushDecompress::None)
+                .decompress_vec(vec.as_slice(), &mut out, flate2::FlushDecompress::Finish)
                 .unwrap();
+
+            log::debug!(
+                "total_in: {} total_out: {}",
+                decompressor.total_in(),
+                decompressor.total_out()
+            );
 
             // Replace the compressed `tmp_buf` with its uncompressed counterpart
             tmp_buf = ByteBuf::from(out.as_slice());
         }
 
         let id: i32 = tmp_buf.read_var_int().unwrap();
+        if compressed_len > 0 {
+            log::debug!(
+                "compressed_len: {} Decompressed got id {:x}",
+                compressed_len,
+                id
+            );
+        }
         (id, tmp_buf)
     }
 
     pub fn read_packets(&mut self) -> Vec<(i32, ByteBuf)> {
         let mut slice = vec![0_u8; self.chunk_size as usize];
         let mut packets = Vec::new();
-        match self.stream.read(&mut slice) {
-            Ok(n) => {
-                let mut buf = ByteBuf::from(&slice[..n]);
+        let n_read = self.stream.read(&mut slice).unwrap();
+        let mut buf = ByteBuf::from(&slice[..n_read]);
 
-                while !buf.end() {
-                    let len = buf.read_var_int().unwrap(); // total packet length
+        while !buf.end() {
+            let len = buf.read_var_int().unwrap(); // total packet length
 
-                    if !buf.has_readable_bytes(len as usize) {
-                        let mut rest = vec![0_u8; (len as usize) - buf.remaining()];
-                        self.stream.read_exact(rest.as_mut_slice()).unwrap();
-                        buf.write_all(rest.as_mut_slice()).unwrap();
-                    }
-
-                    packets.push(self.read_packet(len, &mut buf));
-                }
-
-                log::debug!("size: {}, data: {}", n, hex::encode(&slice[..n]));
+            if !buf.has_readable_bytes(len as usize) {
+                let mut rest = vec![0_u8; (len as usize) - buf.remaining()];
+                self.stream.read_exact(rest.as_mut_slice()).unwrap();
+                buf.write_all(rest.as_mut_slice()).unwrap();
             }
-            Err(e) => {
-                panic!(e)
-            }
+            let (id, pkt) = self.read_packet(len, &mut buf);
+            log::debug!("id: {:x}", id);
+            packets.push((id, pkt));
         }
         packets
     }

@@ -1,10 +1,11 @@
 mod serialize;
+use crate::serialize::keep_alive::*;
 use crate::serialize::packet;
 use crate::serialize::packet::serverbound::*;
 use crate::serialize::protocol::ProtocolVersion;
 
-mod mc;
 mod logging;
+mod mc;
 
 fn main() {
     logging::init(log::LevelFilter::Debug);
@@ -33,7 +34,9 @@ fn main() {
         if len == 0 {
             break;
         }
+
         log::debug!("Read {} packets!", len);
+
         for (id, buf) in pkts.iter_mut() {
             match packet::to_packet_id(*id) {
                 packet::PacketID::SetCompression => {
@@ -43,9 +46,9 @@ fn main() {
                     log::debug!("Compression threshold is {}!", set_compression.threshold);
                 }
                 packet::PacketID::KeepAliveCB => {
-                    let keep_alive = packet::deserialize_new::<packet::clientbound::KeepAlive>(buf);
+                    let keep_alive = packet::deserialize_new::<clientbound::KeepAlive>(buf);
                     log::debug!("Got keep alive id {}!", keep_alive.id);
-                    let keep_alive_sb = packet::serverbound::KeepAlive { id: keep_alive.id };
+                    let keep_alive_sb = serverbound::KeepAlive { id: keep_alive.id };
                     c.send_packet(&keep_alive_sb);
                 }
                 _ => {
