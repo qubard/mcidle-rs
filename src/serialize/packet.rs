@@ -1,6 +1,6 @@
 use crate::serialize::buffer::ByteBuf;
 use crate::serialize::protocol::{ProtocolToID, ProtocolVersion};
-use crate::serialize::var::VarIntWriter;
+use crate::serialize::var::WriteVarInt;
 
 pub mod keep_alive;
 
@@ -163,7 +163,7 @@ mod tests {
     use super::PacketID;
     use crate::serialize::packet::serverbound::*;
     use crate::serialize::packet::*;
-    use crate::serialize::var::VarIntReader;
+    use crate::serialize::var::ReadVarInt;
 
     #[test]
     fn valid_handshake_test() {

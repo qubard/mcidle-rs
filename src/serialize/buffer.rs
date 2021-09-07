@@ -1,6 +1,6 @@
-use crate::serialize::string::VarIntString;
-use crate::serialize::var::{DeserializeError, VarIntReader, VarIntWriter};
-use std::io::{Read, Write};
+use crate::serialize::string::{WriteString, ReadString};
+use crate::serialize::var::{DeserializeError, ReadVarInt, WriteVarInt};
+use std::io::{Read, Write, Error, ErrorKind};
 
 #[derive(Clone)]
 pub struct ByteBuf {
@@ -85,16 +85,6 @@ impl ByteBuf {
     }
 }
 
-impl VarIntString for ByteBuf {
-    fn len(&self) -> usize {
-        self.vec.len()
-    }
-
-    fn extend_from_slice(&mut self, other: &[u8]) {
-        self.vec.extend_from_slice(other)
-    }
-}
-
 impl Write for ByteBuf {
     fn write(&mut self, value: &[u8]) -> std::io::Result<usize> {
         // is extend_from_slice faster than this?
@@ -108,60 +98,21 @@ impl Write for ByteBuf {
 }
 
 impl Read for ByteBuf {
-    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
-        buf.copy_from_slice(&self.vec.as_slice()[self.read_idx..self.read_idx + buf.len()]);
-        self.read_idx += buf.len();
-        Ok(buf.len())
-    }
-}
-
-impl VarIntWriter for ByteBuf {
-    fn write_var_int(&mut self, value: i32) {
-        let mut value: i32 = value;
-        if value == 0 {
-            self.push(0_u8);
+    fn read(&mut self, buf: &mut [u8]) -> Result<usize, Error> {
+        if self.read_idx + buf.len() > self.len() {
+            Err(Error::new(ErrorKind::UnexpectedEof, "unexpected eof"))
+        } else {
+            buf.copy_from_slice(&self.vec.as_slice()[self.read_idx..self.read_idx + buf.len()]);
+            self.read_idx += buf.len();
+            Ok(buf.len())
         }
-
-        while value != 0 {
-            let mut current_byte: u8 = (value & 0b01111111) as u8;
-            // unsigned right shift
-            value = ((value as u32) >> 7) as i32;
-            if value != 0 {
-                current_byte |= 0b10000000;
-            }
-            self.push(current_byte);
-        }
-    }
-}
-
-impl VarIntReader for ByteBuf {
-    fn read_var_int(&mut self) -> Result<i32, DeserializeError> {
-        let mut value: i32 = 0;
-        let mut offset: i64 = 0;
-        let mut current_byte: u8 = 0;
-
-        while offset == 0 || (current_byte & 0b10000000) != 0 {
-            if offset == 35 {
-                return Err(DeserializeError::VarIntTooBig);
-            }
-
-            match self.read_byte() {
-                Some(b) => {
-                    current_byte = b;
-                    value |= ((current_byte & 0b01111111) as i32) << offset;
-                    offset += 7;
-                }
-                None => return Err(DeserializeError::BufferTooSmall),
-            }
-        }
-        Ok(value)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::serialize::buffer::*;
-    use crate::serialize::string::*;
+    use crate::serialize::string::{ReadString, WriteString};
     use crate::serialize::var::*;
 
     #[test]
@@ -229,11 +180,11 @@ mod tests {
         let mut buf = ByteBuf::new();
 
         let arr = [0xFF_u8; 3];
-        buf.write(&arr);
+        buf.write(&arr).unwrap();
         assert_eq!(arr.len(), buf.len());
 
         assert_eq!(
-            DeserializeError::BufferTooSmall,
+            DeserializeError::IoError,
             buf.read_var_int().unwrap_err()
         );
     }
@@ -243,7 +194,7 @@ mod tests {
         let mut buf = ByteBuf::new();
 
         let arr = [0xFF_u8; 5];
-        buf.write(&arr);
+        buf.write(&arr).unwrap();
         assert_eq!(arr.len(), buf.len());
 
         assert_eq!(
