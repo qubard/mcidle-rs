@@ -35,6 +35,19 @@ pub enum PacketID {
     KeepAliveSB = 0x0B,
     SetCompression = 0x03,
     Handshake = 0x00,
+    EncryptionRequest = 0x01,
+}
+
+use serde::{Serialize, Deserialize};
+
+#[derive(Serialize, Deserialize, Debug)]
+struct Point {
+    x: i32,
+    y: i32,
+}
+
+pub struct Serializer {
+    buf: ByteBuf,
 }
 
 pub fn to_packet_id(id: i32) -> PacketID {

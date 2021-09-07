@@ -38,5 +38,7 @@ Not yet.
 - [ ] Better CI
 - [ ] Better error handling
 - [ ] Integration tests
+- [ ] Write VarInt prefixed byte array
+- [ ] Serde for serialization/deserialization
 
 Lots more I'm probably missing.

@@ -109,13 +109,11 @@ impl Connection {
         }
 
         let id: i32 = tmp_buf.read_var_int().unwrap();
-        if compressed_len > 0 {
-            log::debug!(
-                "compressed_len: {} Decompressed got id {:x}",
-                compressed_len,
-                id
-            );
-        }
+        log::debug!(
+            "compressed_len: {} Decompressed got id {:x}",
+            compressed_len,
+            id
+        );
         (id, tmp_buf)
     }
 

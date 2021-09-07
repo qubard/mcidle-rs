@@ -96,9 +96,10 @@ impl VarIntString for ByteBuf {
 }
 
 impl Write for ByteBuf {
-    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        self.vec.reserve(buf.len());
-        self.vec.write(buf)
+    fn write(&mut self, value: &[u8]) -> std::io::Result<usize> {
+        // is extend_from_slice faster than this?
+        self.vec.reserve(value.len());
+        self.vec.write(value)
     }
 
     fn flush(&mut self) -> std::io::Result<()> {
@@ -160,7 +161,6 @@ impl VarIntReader for ByteBuf {
 #[cfg(test)]
 mod tests {
     use crate::serialize::buffer::*;
-    use crate::serialize::bytes::*;
     use crate::serialize::string::*;
     use crate::serialize::var::*;
 
@@ -229,7 +229,7 @@ mod tests {
         let mut buf = ByteBuf::new();
 
         let arr = [0xFF_u8; 3];
-        buf.write_bytes(&arr);
+        buf.write(&arr);
         assert_eq!(arr.len(), buf.len());
 
         assert_eq!(
@@ -243,7 +243,7 @@ mod tests {
         let mut buf = ByteBuf::new();
 
         let arr = [0xFF_u8; 5];
-        buf.write_bytes(&arr);
+        buf.write(&arr);
         assert_eq!(arr.len(), buf.len());
 
         assert_eq!(
