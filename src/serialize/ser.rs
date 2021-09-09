@@ -4,8 +4,8 @@ use std::io::{Read, Write};
 
 use std::fmt::{self, Display};
 
-use crate::serialize::var::{DeserializeError, ReadVarInt, WriteVarInt};
 use crate::serialize::string::{ReadString, WriteString};
+use crate::serialize::var::{DeserializeError, ReadVarInt, WriteVarInt};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 
 pub struct MCProtoSerializer<W: Write> {
@@ -16,6 +16,16 @@ impl<W: Write> MCProtoSerializer<W> {
     /// Creates a new Serializer with the given `Write`r.
     pub fn new(w: W) -> MCProtoSerializer<W> {
         MCProtoSerializer { writer: w }
+    }
+}
+
+impl<'a, W: Write> Write for MCProtoSerializer<W> {
+    fn write(&mut self, value: &[u8]) -> std::io::Result<usize> {
+        self.writer.write(value)
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        self.writer.flush()
     }
 }
 
@@ -267,17 +277,43 @@ where
     }
 }
 
-
 pub fn to_buffer<T>(value: &T) -> Result<ByteBuf, ()>
 where
     T: ser::Serialize,
 {
-    let mut serializer = MCProtoSerializer {
-        writer: ByteBuf::new(),
-    };
+    let mut serializer = MCProtoSerializer::new(ByteBuf::new());
     value.serialize(&mut serializer).unwrap();
     Ok(serializer.writer)
- }
+}
+
+struct VarInt {
+    value: i32,
+}
+
+impl Serialize for VarInt {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut out: Vec<u8> = vec![];
+        let mut value: i32 = self.value;
+        if value == 0 {
+            out.push(0_u8);
+        }
+
+        while value != 0 {
+            let mut current_byte: u8 = (value & 0b01111111) as u8;
+            // unsigned right shift
+            value = ((value as u32) >> 7) as i32;
+            if value != 0 {
+                current_byte |= 0b10000000;
+            }
+            out.push(current_byte);
+        }
+
+        serializer.serialize_bytes(out.as_slice())
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -287,13 +323,24 @@ mod tests {
     pub struct StructTest {
         id: i32,
         s: String,
+        v: i16,
+        varint: VarInt,
     }
 
     #[test]
-    fn ok_test() {
-        let v = StructTest { id: 55 as i32, s : "hello".to_string() };
-        let buf = to_buffer(&v).unwrap();
+    fn basic_serializer_test() {
+        let v = StructTest {
+            id: 55 as i32,
+            s: "hello".to_string(),
+            v: 555 as i16,
+            varint: VarInt{ value: 1337},
+        };
+        let mut buf = to_buffer(&v).unwrap();
         let s = buf.as_slice();
-        assert_eq!(10, buf.len());
+        assert_eq!(14, buf.len());
+        assert_eq!(v.id, buf.read_i32::<BigEndian>().unwrap());
+        assert_eq!(v.s, buf.read_string().unwrap());
+        assert_eq!(v.v, buf.read_i16::<BigEndian>().unwrap());
+        assert_eq!(v.varint.value, buf.read_var_int().unwrap());
     }
 }
