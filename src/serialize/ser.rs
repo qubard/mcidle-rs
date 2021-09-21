@@ -1,5 +1,5 @@
 use crate::serialize::buffer::*;
-use serde::{ser, Serialize};
+use serde::{ser, Serialize, Deserialize};
 use std::io::{Read, Write};
 
 use std::fmt::{self, Display};
@@ -16,16 +16,6 @@ impl<W: Write> MCProtoSerializer<W> {
     /// Creates a new Serializer with the given `Write`r.
     pub fn new(w: W) -> MCProtoSerializer<W> {
         MCProtoSerializer { writer: w }
-    }
-}
-
-impl<'a, W: Write> Write for MCProtoSerializer<W> {
-    fn write(&mut self, value: &[u8]) -> std::io::Result<usize> {
-        self.writer.write(value)
-    }
-
-    fn flush(&mut self) -> std::io::Result<()> {
-        self.writer.flush()
     }
 }
 
@@ -286,7 +276,7 @@ where
     Ok(serializer.writer)
 }
 
-struct VarInt {
+pub struct VarInt {
     value: i32,
 }
 
@@ -318,8 +308,10 @@ impl Serialize for VarInt {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::serialize::de::{deserialize, MCProtoDeserializer};
+    use serde::Deserializer;
 
-    #[derive(Serialize)]
+    #[derive(Serialize, Deserialize)]
     pub struct StructTest {
         id: i32,
         s: String,
@@ -338,9 +330,11 @@ mod tests {
         let mut buf = to_buffer(&v).unwrap();
         let s = buf.as_slice();
         assert_eq!(14, buf.len());
-        assert_eq!(v.id, buf.read_i32::<BigEndian>().unwrap());
-        assert_eq!(v.s, buf.read_string().unwrap());
-        assert_eq!(v.v, buf.read_i16::<BigEndian>().unwrap());
-        assert_eq!(v.varint.value, buf.read_var_int().unwrap());
+        //assert_eq!(v.id, buf.read_i32::<BigEndian>().unwrap());
+        //assert_eq!(v.s, buf.read_string().unwrap());
+        //assert_eq!(v.v, buf.read_i16::<BigEndian>().unwrap());
+        //assert_eq!(v.varint.value, buf.read_var_int().unwrap());
+        let mut d = MCProtoDeserializer::new(buf);
+        deserialize::<StructTest>(&d);
     }
 }

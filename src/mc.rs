@@ -94,6 +94,7 @@ impl Connection {
             let mut decompressor = flate2::Decompress::new(true);
 
             // zlib inflate into another slice
+            // TODO: stop using unwrap
             decompressor
                 .decompress_vec(vec.as_slice(), &mut out, flate2::FlushDecompress::Finish)
                 .unwrap();

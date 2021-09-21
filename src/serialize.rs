@@ -5,3 +5,4 @@ pub mod string;
 pub mod var;
 pub mod ser;
 pub mod error;
+pub mod de;
