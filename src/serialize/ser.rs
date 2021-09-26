@@ -309,7 +309,6 @@ impl Serialize for VarInt {
 mod tests {
     use super::*;
     use crate::serialize::de::{deserialize, MCProtoDeserializer};
-    use serde::Deserializer;
 
     #[derive(Serialize, Deserialize)]
     pub struct StructTest {
