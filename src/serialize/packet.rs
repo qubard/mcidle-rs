@@ -1,6 +1,8 @@
 use crate::serialize::buffer::ByteBuf;
 use crate::serialize::protocol::{ProtocolToID, ProtocolVersion};
-use crate::serialize::var::VarIntWriter;
+use crate::serialize::var::WriteVarInt;
+
+pub mod keep_alive;
 
 pub trait PacketSerializer: ProtocolToID {
     fn serialize(&self, buf: &mut ByteBuf, ver: &ProtocolVersion);
@@ -33,6 +35,19 @@ pub enum PacketID {
     KeepAliveSB = 0x0B,
     SetCompression = 0x03,
     Handshake = 0x00,
+    EncryptionRequest = 0x01,
+}
+
+use serde::{Serialize, Deserialize};
+
+#[derive(Serialize, Deserialize, Debug)]
+struct Point {
+    x: i32,
+    y: i32,
+}
+
+pub struct Serializer {
+    buf: ByteBuf,
 }
 
 pub fn to_packet_id(id: i32) -> PacketID {
@@ -45,28 +60,6 @@ pub mod clientbound {
     use crate::serialize::buffer::ByteBuf;
     use crate::serialize::protocol::{ProtocolToID, ProtocolVersion};
     use crate::serialize::var::*;
-    use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-
-    #[derive(Debug, Default)]
-    pub struct KeepAlive {
-        pub id: i64,
-    }
-
-    impl ProtocolToID for KeepAlive {
-        fn resolve_id(&self, _ver: &ProtocolVersion) -> i32 {
-            PacketID::KeepAliveCB as i32
-        }
-    }
-
-    impl PacketSerializer for KeepAlive {
-        fn serialize(&self, buf: &mut ByteBuf, _: &ProtocolVersion) {
-            buf.write_i64::<BigEndian>(self.id).unwrap();
-        }
-
-        fn deserialize(&mut self, buf: &mut ByteBuf) {
-            self.id = buf.read_i64::<BigEndian>().unwrap();
-        }
-    }
 
     #[derive(Debug, Default)]
     pub struct SetCompression {
@@ -121,11 +114,6 @@ pub mod serverbound {
         pub next_state: LoginState,
     }
 
-    #[derive(Debug)]
-    pub struct KeepAlive {
-        pub id: i64,
-    }
-
     #[derive(Debug, Default)]
     pub struct LoginStart {
         pub username: String,
@@ -134,22 +122,6 @@ pub mod serverbound {
     impl ProtocolToID for Handshake {
         fn resolve_id(&self, _ver: &ProtocolVersion) -> i32 {
             PacketID::Handshake as i32
-        }
-    }
-
-    impl ProtocolToID for KeepAlive {
-        fn resolve_id(&self, _ver: &ProtocolVersion) -> i32 {
-            PacketID::KeepAliveSB as i32
-        }
-    }
-
-    impl PacketSerializer for KeepAlive {
-        fn serialize(&self, buf: &mut ByteBuf, _: &ProtocolVersion) {
-            buf.write_i64::<BigEndian>(self.id).unwrap();
-        }
-
-        fn deserialize(&mut self, buf: &mut ByteBuf) {
-            self.id = buf.read_i64::<BigEndian>().unwrap();
         }
     }
 
@@ -191,7 +163,7 @@ mod tests {
     use super::PacketID;
     use crate::serialize::packet::serverbound::*;
     use crate::serialize::packet::*;
-    use crate::serialize::var::VarIntReader;
+    use crate::serialize::var::ReadVarInt;
 
     #[test]
     fn valid_handshake_test() {

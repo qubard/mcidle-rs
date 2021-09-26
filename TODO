@@ -1,6 +1,0 @@
-- move bytebuf logic into its own file in serialize i think
-- other packets
-- encryption/decryption (not RSA yet)
-- compression
-- logging
-- protocol support
