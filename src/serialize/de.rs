@@ -1,6 +1,6 @@
 use crate::serialize::ser::VarInt;
 use crate::serialize::var::ReadVarInt;
-use serde::de::Visitor;
+use serde::de::{Visitor, SeqAccess, DeserializeSeed};
 use serde::Deserializer;
 use serde::{ser, Deserialize, Serialize};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
@@ -8,12 +8,12 @@ use std::io::prelude::*;
 use crate::serialize::buffer::*;
 use crate::serialize::error::Error;
 
-pub struct MCProtoDeserializer<R: Read> {
-    pub reader: R,
+pub struct MCProtoDeserializer<'de, R: Read> {
+    pub reader: &'de mut R,
 }
 
-impl<R: Read> MCProtoDeserializer<R> {
-    pub fn new(r: R) -> MCProtoDeserializer<R> {
+impl<'de, R: Read> MCProtoDeserializer<'de, R> {
+    pub fn new(r: &'de mut R) -> MCProtoDeserializer<R> {
         MCProtoDeserializer { reader: r }
     }
 }
@@ -26,7 +26,7 @@ pub fn deserialize<'de, T, D>(deserializer: D) -> Result<T, D::Error>
     Deserialize::deserialize(deserializer)
 }
 
-impl<'de, 'a, R: Read> Deserializer<'de> for &'a mut MCProtoDeserializer<R> {
+impl<'de, 'a, R: Read> Deserializer<'de> for &'a mut MCProtoDeserializer<'de, R> {
     type Error = Error;
 
     fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
@@ -208,6 +208,7 @@ impl<'de, 'a, R: Read> Deserializer<'de> for &'a mut MCProtoDeserializer<R> {
     where
         V: Visitor<'de>,
     {
+        println!("len: {}", len);
         visitor.visit_seq(Seq { de: self, len })
     }
 
@@ -269,6 +270,25 @@ impl<'de, 'a, R: Read> Deserializer<'de> for &'a mut MCProtoDeserializer<R> {
         V: Visitor<'de>,
     {
         unimplemented!()
+    }
+}
+
+
+pub struct Seq<'a, 'de, R: Read> {
+    pub de: &'a mut MCProtoDeserializer<'de, R>,
+    pub len: usize
+}
+
+
+impl<'de, 'a, R: Read> SeqAccess<'de> for Seq<'a, 'de, R> {
+    type Error = Error;
+
+    fn next_element_seed<T>(
+    &mut self,
+    seed: T
+) -> Result<Option<T::Value>, Self::Error>
+where T: DeserializeSeed<'de> {
+        seed.deserialize(&mut *self.de).map(Some)
     }
 }
 

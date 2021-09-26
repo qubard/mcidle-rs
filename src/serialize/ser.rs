@@ -314,21 +314,24 @@ mod tests {
     #[derive(Serialize, Deserialize)]
     pub struct StructTest {
         id: i32,
+        b: i32,
     }
 
     #[test]
     fn basic_serializer_test() {
         let v = StructTest {
             id: 55 as i32,
+            b: 51 as i32,
         };
-        let buf: ByteBuf = to_buffer(&v).unwrap();
+        let mut buf: ByteBuf = to_buffer(&v).unwrap();
         let s = buf.as_slice();
         //assert_eq!(v.id, buf.read_i32::<BigEndian>().unwrap());
         //assert_eq!(v.s, buf.read_string().unwrap());
         //assert_eq!(v.v, buf.read_i16::<BigEndian>().unwrap());
         //assert_eq!(v.varint.value, buf.read_var_int().unwrap());
-        let mut d = MCProtoDeserializer::new(buf);
+        let mut d = MCProtoDeserializer::new(&mut buf);
         let r = deserialize::<StructTest, &mut MCProtoDeserializer<ByteBuf>>(&mut d).unwrap();
         assert_eq!(v.id, r.id);
+        assert_eq!(v.b, r.b);
     }
 }
