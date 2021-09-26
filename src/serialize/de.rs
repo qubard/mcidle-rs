@@ -208,8 +208,7 @@ impl<'de, 'a, R: Read> Deserializer<'de> for &'a mut MCProtoDeserializer<R> {
     where
         V: Visitor<'de>,
     {
-        //visitor.visit_seq(Seq { de: self, len })
-        unimplemented!()
+        visitor.visit_seq(Seq { de: self, len })
     }
 
     fn deserialize_tuple_struct<V>(
